@@ -6,6 +6,7 @@ import signal
 import sys
 import time
 import yaml
+import subprocess
 import argparse
 
 from helpers.etcd import Etcd
@@ -67,13 +68,22 @@ class Governor:
 
     def sync_from_leader(self, max_tries=10):
         for i in range(max_tries):
+            ex = None
             leader = self.etcd.current_leader()
-            if leader and self.postgresql.sync_from_leader(leader):
+            try:
+                if leader:
+                    self.postgresql.sync_from_leader(leader)
+            except subprocess.CalledProcessError as e:
+                logger.exception('sync_from_leader')
+                ex = e
+            else:
                 self.postgresql.write_recovery_conf(leader)
                 self.postgresql.start()
                 return
             time.sleep( 2 ** (i + 1) )
-        raise Exception('failed to sync with leader')
+        if ex:
+            raise ex
+        raise Exception('failed to get leader')
 
     def load_postgresql():
         if self.postgresql.is_running():

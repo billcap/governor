@@ -3,6 +3,7 @@ import os
 import psycopg2
 import sys
 import time
+import subprocess
 
 is_py3 = sys.hexversion >= 0x03000000
 
@@ -94,10 +95,12 @@ class Postgresql:
         return not os.path.exists(self.data_dir) or os.listdir(self.data_dir) == []
 
     def initialize(self):
-        ret = os.system(self._pg_ctl + ' initdb -o --encoding=UTF8') == 0
-        if ret:
-            self.write_pg_hba()
-        return ret
+        try:
+            subprocess.check_call([self._pg_ctl, 'initdb', '-o', '--encoding=UTF8'])
+        except subprocess.CalledProcessError:
+            return False
+        self.write_pg_hba()
+        return True
 
     def sync_from_leader(self, leader):
         r = parseurl(leader.address)
@@ -107,12 +110,15 @@ class Postgresql:
             os.fchmod(f.fileno(), 0o600)
             f.write('{host}:{port}:*:{user}:{password}\n'.format(**r))
 
-        try:
-            os.environ['PGPASSFILE'] = pgpass
-            return os.system('pg_basebackup -R -D {data_dir} --host={host} --port={port} -U {user}'.format(
-                data_dir=self.data_dir, **r)) == 0
-        finally:
-            os.environ.pop('PGPASSFILE')
+        env = os.environ.copy()
+        env['PGPASSFILE'] = pgpass
+        subprocess.check_call([
+            'pg_basebackup', '-R',
+            '-D', self.data_dir,
+            '--host', r['host'],
+            '--port', r['port'],
+            '-U', r['user'],
+        ], env=env)
 
     def is_leader(self):
         return not self.query('SELECT pg_is_in_recovery()').fetchone()[0]
