@@ -42,11 +42,14 @@ class Governor:
     def touch_member(self):
         return self.etcd.touch_member(self.name, self.postgresql.connection_string)
 
-    def initialize(self, force_leader=False):
+    def initialize(self, force_leader=False, max_tries=10):
         # wait for etcd to be available
-        while not self.touch_member():
+        for i in range(max_tries):
+            if self.touch_member():
+                return
             logging.info('waiting on etcd')
-            time.sleep(5)
+            time.sleep( 2 ** (i + 1) )
+        raise EtcdError('could not connect to etcd')
 
         # is data directory empty?
         if not self.postgresql.data_directory_empty():
@@ -62,14 +65,15 @@ class Governor:
             self.postgresql.create_replication_user()
             return True
 
-    def sync_from_leader(self):
-        while True:
+    def sync_from_leader(self, max_tries=10):
+        for i in range(max_tries):
             leader = self.etcd.current_leader()
             if leader and self.postgresql.sync_from_leader(leader):
                 self.postgresql.write_recovery_conf(leader)
                 self.postgresql.start()
-                break
-            time.sleep(5)
+                return
+            time.sleep( 2 ** (i + 1) )
+        raise Exception('failed to sync with leader')
 
     def load_postgresql():
         if self.postgresql.is_running():
