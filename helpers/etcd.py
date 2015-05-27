@@ -25,7 +25,7 @@ class Etcd:
     def __init__(self, config):
         self.ttl = config['ttl']
         self.member_ttl = config.get('member_ttl', 3600)
-        self.base_client_url = urljoin('http://', config['host'], 'v2/keys/service', config['scope'])
+        self.base_client_url = urljoin(config['host'], 'v2/keys/service', config['scope'])
         self.client_url = partial(urljoin, self.base_client_url)
         self.postgres_cluster = None
 

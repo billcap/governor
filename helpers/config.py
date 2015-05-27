@@ -8,7 +8,7 @@ def load_config(filename):
 
     config.setdefault('etcd', {})
     etcd = config['etcd']
-    etcd.setdefault('host', os.environ.get('ETCD_HOST', '127.0.0.1:4001'))
+    etcd.setdefault('host', os.environ.get('ETCD_HOST', 'http://127.0.0.1:4001'))
     etcd.setdefault('scope', '')
 
     config.setdefault('postgresql', {})
