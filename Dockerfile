@@ -22,13 +22,13 @@ WORKDIR /usr/src/app
 COPY requirements.txt /usr/src/app/
 RUN pip install -r requirements.txt
 
-RUN mkdir -p "$PGDATA" /wal_archive \
-    && chown -R postgres "$PGDATA" /wal_archive
+ENV WAL_ARCHIVE /wal_archive
+RUN mkdir -p "$PGDATA" "$WAL_ARCHIVE"
 
 COPY governor.py postgres.yml /usr/src/app/
 COPY helpers /usr/src/app/helpers
 ENV PYTHONPATH=/usr/src/app/
 
-ENTRYPOINT ["gosu", "postgres", "python", "governor.py"]
+ENTRYPOINT ["entrypoint.sh", "gosu", "postgres", "python", "governor.py"]
 CMD ["postgres.yml"]
 
