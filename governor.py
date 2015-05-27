@@ -13,6 +13,7 @@ from helpers.etcd import Etcd
 from helpers.postgresql import Postgresql
 from helpers.ha import Ha
 from helpers.config import load_config
+from helpers.errors import retry
 
 
 def sigterm_handler(signo, stack_frame):
@@ -43,14 +44,10 @@ class Governor:
     def touch_member(self):
         return self.etcd.touch_member(self.name, self.postgresql.connection_string)
 
-    def init_member(self, max_tries=5):
+    @retry(5)
+    def init_member(self):
         # wait for etcd to be available
-        for i in range(max_tries):
-            if self.touch_member():
-                return
-            logging.info('waiting on etcd')
-            time.sleep( 2 ** (i + 1) )
-        raise EtcdError('could not connect to etcd')
+        return self.touch_member()
 
     def initialize(self, force_leader=False):
         self.init_member()
@@ -69,24 +66,14 @@ class Governor:
             self.postgresql.create_replication_user()
             return True
 
+    @retry(5, default='failed to get leader')
     def sync_from_leader(self, max_tries=5):
-        for i in range(max_tries):
-            ex = None
-            leader = self.etcd.current_leader()
-            if leader:
-                try:
-                    self.postgresql.sync_from_leader(leader)
-                except subprocess.CalledProcessError as e:
-                    logger.exception('sync_from_leader')
-                    ex = e
-                else:
-                    self.postgresql.write_recovery_conf(leader)
-                    self.postgresql.start()
-                    return
-            time.sleep( 2 ** (i + 1) )
-        if ex:
-            raise ex
-        raise Exception('failed to get leader')
+        leader = self.etcd.current_leader()
+        if leader:
+            self.postgresql.sync_from_leader(leader)
+            self.postgresql.write_recovery_conf(leader)
+            self.postgresql.start()
+            return True
 
     def load_postgresql():
         if self.postgresql.is_running():
