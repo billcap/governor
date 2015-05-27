@@ -27,7 +27,7 @@ def _retry(func, retries, errors, default):
 
             ex = None
             try:
-                value = func()
+                value = func(*args, **kwargs)
             except errors as e:
                 logging.exception(func.__name__)
                 ex = e
