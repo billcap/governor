@@ -1,5 +1,6 @@
 import yaml
 import socket
+import os
 
 def load_config(filename):
     with open(filename) as f:
@@ -12,6 +13,6 @@ def load_config(filename):
     config.setdefault('postgresql', {})
     psql = config['postgresql']
     psql.setdefault('name', socket.gethostname())
-    psql.setdefault('data_dir', '/data')
+    psql.setdefault('data_dir', os.environ['PGDATA'])
 
     return config
