@@ -39,6 +39,7 @@ def _retry(func, retries, errors, default):
             raise ex
         if default:
             raise default
+    return wrapped
 
 def retry(retries, errors=Exception, default=None):
     if isinstance(default, str):
