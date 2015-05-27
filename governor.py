@@ -43,7 +43,7 @@ class Governor:
     def touch_member(self):
         return self.etcd.touch_member(self.name, self.postgresql.connection_string)
 
-    def init_member(self, max_tries=10):
+    def init_member(self, max_tries=5):
         # wait for etcd to be available
         for i in range(max_tries):
             if self.touch_member():
@@ -69,7 +69,7 @@ class Governor:
             self.postgresql.create_replication_user()
             return True
 
-    def sync_from_leader(self, max_tries=10):
+    def sync_from_leader(self, max_tries=5):
         for i in range(max_tries):
             ex = None
             leader = self.etcd.current_leader()
