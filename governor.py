@@ -47,6 +47,7 @@ class Governor:
     @retry(5)
     def init_member(self):
         # wait for etcd to be available
+        logging.info('waiting on etcd')
         return self.touch_member()
 
     def initialize(self, force_leader=False):
@@ -68,8 +69,10 @@ class Governor:
 
     @retry(5, default='failed to get leader')
     def sync_from_leader(self, max_tries=5):
+        logging.info('resolving leader')
         leader = self.etcd.current_leader()
         if leader:
+            logging.info('syncing with leader')
             self.postgresql.sync_from_leader(leader)
             self.postgresql.write_recovery_conf(leader)
             self.postgresql.start()
