@@ -25,9 +25,8 @@ RUN pip install -r requirements.txt
 RUN mkdir -p /data /wal_archive \
     && chown -R postgres /data /wal_archive
 
-COPY governor.py /usr/src/app/
+COPY governor.py postgres.yml /usr/src/app/
 COPY helpers /usr/src/app/helpers
-COPY postgres.yml /usr/src/app/
 ENV PYTHONPATH=/usr/src/app/
 
 ENTRYPOINT ["gosu", "postgres", "python", "governor.py"]
