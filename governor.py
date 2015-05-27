@@ -43,7 +43,7 @@ class Governor:
     def touch_member(self):
         return self.etcd.touch_member(self.name, self.postgresql.connection_string)
 
-    def initialize(self, force_leader=False, max_tries=10):
+    def init_member(self, max_tries=10):
         # wait for etcd to be available
         for i in range(max_tries):
             if self.touch_member():
@@ -51,6 +51,9 @@ class Governor:
             logging.info('waiting on etcd')
             time.sleep( 2 ** (i + 1) )
         raise EtcdError('could not connect to etcd')
+
+    def initialize(self, force_leader=False):
+        self.init_member()
 
         # is data directory empty?
         if not self.postgresql.data_directory_empty():
