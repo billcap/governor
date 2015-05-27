@@ -82,6 +82,7 @@ class Governor:
 
     def cleanup(self):
         self.postgresql.stop()
+        self.etcd.delete_member(self.name)
         self.etcd.delete_leader(self.name)
 
 
