@@ -23,7 +23,9 @@ def _retry(func, retries, errors, default):
     def wrapped(*args, **kwargs):
         for i in range(retries):
             if i != 0:
-                time.sleep( 2 ** (i + 1) )
+                wait = 2 ** (i + 1)
+                logging.info('waiting %i seconds', wait)
+                time.sleep(wait)
 
             ex = None
             try:
