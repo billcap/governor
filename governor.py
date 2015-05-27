@@ -73,16 +73,16 @@ class Governor:
         for i in range(max_tries):
             ex = None
             leader = self.etcd.current_leader()
-            try:
-                if leader:
+            if leader:
+                try:
                     self.postgresql.sync_from_leader(leader)
-            except subprocess.CalledProcessError as e:
-                logger.exception('sync_from_leader')
-                ex = e
-            else:
-                self.postgresql.write_recovery_conf(leader)
-                self.postgresql.start()
-                return
+                except subprocess.CalledProcessError as e:
+                    logger.exception('sync_from_leader')
+                    ex = e
+                else:
+                    self.postgresql.write_recovery_conf(leader)
+                    self.postgresql.start()
+                    return
             time.sleep( 2 ** (i + 1) )
         if ex:
             raise ex
