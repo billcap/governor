@@ -45,25 +45,32 @@ class Governor:
             time.sleep(5)
 
         # is data directory empty?
-        if self.postgresql.data_directory_empty():
-            # racing to initialize
-            if self.etcd.race('/initialize', self.postgresql.name):
-                self.postgresql.initialize()
-                self.etcd.take_leader(self.postgresql.name)
+        if not self.postgresql.data_directory_empty():
+            self.start_postgresql()
+        elif not self.take_leadership():
+            self.sync_from_leader()
+
+    def take_leadership(self):
+        if self.etcd.race('/initialize', self.postgresql.name):
+            self.postgresql.initialize()
+            self.etcd.take_leader(self.postgresql.name)
+            self.postgresql.start()
+            self.postgresql.create_replication_user()
+            return True
+
+    def sync_from_leader(self):
+        while True:
+            leader = self.etcd.current_leader()
+            if leader and self.postgresql.sync_from_leader(leader):
+                self.postgresql.write_recovery_conf(leader)
                 self.postgresql.start()
-                self.postgresql.create_replication_user()
-            else:
-                while True:
-                    leader = self.etcd.current_leader()
-                    if leader and self.postgresql.sync_from_leader(leader):
-                        self.postgresql.write_recovery_conf(leader)
-                        self.postgresql.start()
-                        break
-                    time.sleep(5)
-        else:
-            if not self.postgresql.is_running():
-                self.postgresql.start()
-            self.postgresql.load_replication_slots()
+                break
+            time.sleep(5)
+
+    def start_postgresql():
+        if not self.postgresql.is_running():
+            self.postgresql.start()
+        self.postgresql.load_replication_slots()
 
     def run(self):
         while True:
@@ -94,3 +101,4 @@ if __name__ == '__main__':
     signal.signal(signal.SIGTERM, sigterm_handler)
     signal.signal(signal.SIGCHLD, sigchld_handler)
     main()
+
