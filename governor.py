@@ -10,6 +10,7 @@ import yaml
 from helpers.etcd import Etcd
 from helpers.postgresql import Postgresql
 from helpers.ha import Ha
+from helpers.config import load_config
 
 
 def sigterm_handler(signo, stack_frame):
@@ -89,9 +90,7 @@ def main():
         print('Usage: {} config.yml'.format(sys.argv[0]))
         return
 
-    with open(sys.argv[1], 'r') as f:
-        config = yaml.load(f)
-
+    config = load_config(sys.argv[1])
     governor = Governor(config)
     try:
         governor.initialize()
