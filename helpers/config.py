@@ -8,7 +8,8 @@ def load_config(filename):
 
     config.setdefault('etcd', {})
     etcd = config['etcd']
-    etcd.setdefault('scope', '/')
+    etcd.setdefault('scope', '')
+    etcd['scope'] = etcd['scope'].lstrip('/')
 
     config.setdefault('postgresql', {})
     psql = config['postgresql']
