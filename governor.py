@@ -6,6 +6,7 @@ import signal
 import sys
 import time
 import yaml
+import argparse
 
 from helpers.etcd import Etcd
 from helpers.postgresql import Postgresql
@@ -41,7 +42,7 @@ class Governor:
     def touch_member(self):
         return self.etcd.touch_member(self.name, self.postgresql.connection_string)
 
-    def initialize(self):
+    def initialize(self, force_leader=False):
         # wait for etcd to be available
         while not self.touch_member():
             logging.info('waiting on etcd')
@@ -50,11 +51,11 @@ class Governor:
         # is data directory empty?
         if not self.postgresql.data_directory_empty():
             self.load_postgresql()
-        elif not self.init_cluster():
+        elif not self.init_cluster(force_leader):
             self.sync_from_leader()
 
-    def init_cluster(self):
-        if self.etcd.race('/initialize', self.name):
+    def init_cluster(self, force_leader=False):
+        if self.etcd.race('/initialize', self.name) or force_leader:
             self.postgresql.initialize()
             self.etcd.take_leader(self.name)
             self.postgresql.start()
@@ -87,14 +88,15 @@ class Governor:
 
 
 def main():
-    if len(sys.argv) < 2 or not os.path.isfile(sys.argv[1]):
-        print('Usage: {} config.yml'.format(sys.argv[0]))
-        return
+    parser = argparse.ArgumentParser(description='Postgresql node with self-registration on etcd')
+    parser.add_argument('config', help='config file')
+    parser.add_argument('--force-leader', action='store_true', help='forcibly become the leader')
+    args = parser.parse_args()
 
-    config = load_config(sys.argv[1])
+    config = load_config(args.config)
     governor = Governor(config)
     try:
-        governor.initialize()
+        governor.initialize(force_leader=args.force_leader)
         governor.run()
     except KeyboardInterrupt:
         pass
