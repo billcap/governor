@@ -22,8 +22,8 @@ WORKDIR /usr/src/app
 COPY requirements.txt /usr/src/app/
 RUN pip install -r requirements.txt
 
-RUN mkdir -p /data /wal_archive \
-    && chown -R postgres /data /wal_archive
+RUN mkdir -p "$PGDATA" /wal_archive \
+    && chown -R postgres "$PGDATA" /wal_archive
 
 COPY governor.py postgres.yml /usr/src/app/
 COPY helpers /usr/src/app/helpers
