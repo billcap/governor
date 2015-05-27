@@ -25,10 +25,11 @@ RUN pip install -r requirements.txt
 ENV WAL_ARCHIVE /wal_archive
 RUN mkdir -p "$PGDATA" "$WAL_ARCHIVE"
 
+COPY entrypoint.sh /
 COPY governor.py postgres.yml /usr/src/app/
 COPY helpers /usr/src/app/helpers
 ENV PYTHONPATH=/usr/src/app/
 
-ENTRYPOINT ["entrypoint.sh", "gosu", "postgres", "python", "governor.py"]
+ENTRYPOINT ["/entrypoint.sh", "gosu", "postgres", "python", "governor.py"]
 CMD ["postgres.yml"]
 
