@@ -12,7 +12,6 @@ Member = namedtuple('Member', 'hostname,address,ttl')
 
 
 class Cluster(namedtuple('Cluster', 'leader,last_leader_operation,members')):
-
     def is_unlocked(self):
         return not (self.leader and self.leader.hostname)
 
@@ -23,36 +22,39 @@ class Etcd:
         self.ttl = config['ttl']
         self.member_ttl = config.get('member_ttl', 3600)
         self.base_client_url = 'http://{host}/v2/keys/service/{scope}'.format(**config)
+        self.client_url = (self.base_client_url + '{}').format
         self.postgres_cluster = None
 
-    def get_client_path(self, path, max_attempts=1):
-        attempts = 0
-        response = None
+    def get(self, path):
+        return requests.get(self.client_url(path))
+    def set(self, path, **data):
+        return requests.put(self.client_url(path), data=data)
+    def delete(self, path):
+        return requests.delete(self.client_url(path))
 
-        while True:
+    def get_client_path(self, path, max_attempts=1):
+        for i in range(max_attempts):
             ex = None
+            if i != 0:
+                logger.info('Failed to return %s, trying again. (%s of %s)', path, attempts, max_attempts)
+                time.sleep(3)
+
             try:
-                response = requests.get(self.client_url(path))
+                response = self.get(path)
                 if response.status_code == 200:
                     break
             except Exception as e:
                 logger.exception('get_client_path')
                 ex = e
 
-            attempts += 1
-            if attempts < max_attempts:
-                logger.info('Failed to return %s, trying again. (%s of %s)', path, attempts, max_attempts)
-                time.sleep(3)
-            elif ex:
-                raise ex
-            else:
-                break
+        if ex:
+            raise ex
 
         return response.json(), response.status_code
 
     def put_client_path(self, path, **data):
         try:
-            response = requests.put(self.client_url(path), data=data)
+            response = self.set(path, **data)
             return response.status_code in [200, 201, 202, 204]
         except:
             logger.exception('PUT %s data=%s', path, data)
@@ -60,14 +62,11 @@ class Etcd:
 
     def delete_client_path(self, path):
         try:
-            response = requests.delete(self.client_url(path))
+            response = self.delete(path)
             return response.status_code in [200, 202, 204]
         except:
             logger.exception('DELETE %s', path)
             return False
-
-    def client_url(self, path):
-        return self.base_client_url + path
 
     @staticmethod
     def find_node(node, key):
@@ -149,3 +148,4 @@ class Etcd:
 
     def delete_leader(self, value):
         return self.delete_client_path('/leader?prevValue=' + value)
+

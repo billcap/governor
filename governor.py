@@ -35,8 +35,10 @@ class Governor:
         self.postgresql = Postgresql(config['postgresql'])
         self.ha = Ha(self.postgresql, self.etcd)
 
+        self.name = self.postgresql.name
+
     def touch_member(self):
-        return self.etcd.touch_member(self.postgresql.name, self.postgresql.connection_string)
+        return self.etcd.touch_member(self.name, self.postgresql.connection_string)
 
     def initialize(self):
         # wait for etcd to be available
@@ -46,14 +48,14 @@ class Governor:
 
         # is data directory empty?
         if not self.postgresql.data_directory_empty():
-            self.start_postgresql()
-        elif not self.take_leadership():
+            self.load_postgresql()
+        elif not self.init_cluster():
             self.sync_from_leader()
 
-    def take_leadership(self):
-        if self.etcd.race('/initialize', self.postgresql.name):
+    def init_cluster(self):
+        if self.etcd.race('/initialize', self.name):
             self.postgresql.initialize()
-            self.etcd.take_leader(self.postgresql.name)
+            self.etcd.take_leader(self.name)
             self.postgresql.start()
             self.postgresql.create_replication_user()
             return True
@@ -67,16 +69,19 @@ class Governor:
                 break
             time.sleep(5)
 
-    def start_postgresql():
-        if not self.postgresql.is_running():
-            self.postgresql.start()
-        self.postgresql.load_replication_slots()
+    def load_postgresql():
+        if self.postgresql.is_running():
+            self.postgresql.load_replication_slots()
 
     def run(self):
         while True:
             self.touch_member()
             logging.info(self.ha.run_cycle())
             time.sleep(self.nap_time)
+
+    def cleanup(self):
+        self.postgresql.stop()
+        self.etcd.delete_leader(self.name)
 
 
 def main():
@@ -92,8 +97,7 @@ def main():
         governor.initialize()
         governor.run()
     finally:
-        governor.postgresql.stop()
-        governor.etcd.delete_leader(governor.postgresql.name)
+        governor.cleanup()
 
 
 if __name__ == '__main__':

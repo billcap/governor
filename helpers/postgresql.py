@@ -65,12 +65,14 @@ class Postgresql:
         return self._cursor_holder
 
     def disconnect(self):
-        self._connection and self._connection.close()
+        if self._connection:
+            self._connection.close()
         self._connection = self._cursor_holder = None
 
     def query(self, sql, *params):
-        max_attempts = 0
-        while True:
+        max_attempts = 3
+
+        for i in range(max_attempts):
             ex = None
             try:
                 cursor = self._cursor()
@@ -82,19 +84,19 @@ class Postgresql:
                 if self._connection and self._connection.closed == 0:
                     raise e
                 ex = e
-            if ex:
-                self.disconnect()
-                max_attempts += 1
-                if max_attempts >= 3:
-                    raise ex
-                time.sleep(5)
+            self.disconnect()
+            time.sleep(5)
+
+        if ex:
+            raise ex
 
     def data_directory_empty(self):
         return not os.path.exists(self.data_dir) or os.listdir(self.data_dir) == []
 
     def initialize(self):
         ret = os.system(self._pg_ctl + ' initdb -o --encoding=UTF8') == 0
-        ret and self.write_pg_hba()
+        if ret:
+            self.write_pg_hba()
         return ret
 
     def sync_from_leader(self, leader):
@@ -205,23 +207,23 @@ class Postgresql:
         return not pattern
 
     def write_recovery_conf(self, leader):
+        contents = [
+            "standby_mode = 'on'",
+            "recovery_target_timeline = 'latest'",
+        ]
+        if leader and leader.address:
+            contents.append( "primary_slot_name = '{}'".format(self.name) )
+            contents.append( "primary_conninfo = '{}'".format(self.primary_conninfo(leader.address)) )
+            for name, value in self.config.get('recovery_conf', {}).items():
+                contents.append( "{} = '{}'".format(name, value) )
+
         with open(self.recovery_conf, 'w') as f:
-            f.write("""standby_mode = 'on'
-recovery_target_timeline = 'latest'
-""")
-            if leader and leader.address:
-                f.write("""
-primary_slot_name = '{}'
-primary_conninfo = '{}'
-""".format(self.name, self.primary_conninfo(leader.address)))
-                for name, value in self.config.get('recovery_conf', {}).items():
-                    f.write("{} = '{}'\n".format(name, value))
+            f.write('\n'.join(contents) + '\n')
 
     def follow_the_leader(self, leader):
-        if self.check_recovery_conf(leader):
-            return
-        self.write_recovery_conf(leader)
-        self.restart()
+        if not self.check_recovery_conf(leader):
+            self.write_recovery_conf(leader)
+            self.restart()
 
     def promote(self):
         return os.system(self._pg_ctl + ' promote') == 0
