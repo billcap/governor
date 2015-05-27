@@ -1,6 +1,7 @@
 import logging
 import requests
 import time
+from functools import partial
 
 from collections import namedtuple
 from helpers.errors import CurrentLeaderError, EtcdError
@@ -16,13 +17,16 @@ class Cluster(namedtuple('Cluster', 'leader,last_leader_operation,members')):
         return not (self.leader and self.leader.hostname)
 
 
+def urljoin(*args):
+    return '/'.join(i.strip('/') for i in args)
+
 class Etcd:
 
     def __init__(self, config):
         self.ttl = config['ttl']
         self.member_ttl = config.get('member_ttl', 3600)
-        self.base_client_url = 'http://{host}/v2/keys/service/{scope}'.format(**config)
-        self.client_url = (self.base_client_url + '{}').format
+        self.base_client_url = urljoin('http://', config['host'], 'v2/keys/service', config['scope'])
+        self.client_url = partial(urljoin, self.base_client_url)
         self.postgres_cluster = None
 
     def get(self, path):
