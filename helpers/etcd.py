@@ -102,12 +102,10 @@ class Etcd:
                 leader = None
                 node = self.find_node(response['node'], '/leader')
                 if node:
-                    for m in members:
-                        if m.hostname == node['value']:
-                            leader = m
-                            break
+                    leader = next((m for m in members if m.hostname == node['value']), None)
+                    # leader is not a member! delete
                     if not leader:
-                        leader = Member(leader['value'], None, None)
+                        self.delete_leader(node['value'])
 
                 return Cluster(leader, last_leader_operation, members)
             elif status_code == 404:
