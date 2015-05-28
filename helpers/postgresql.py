@@ -203,7 +203,7 @@ class Postgresql:
 
             if self.auth:
                 for subnet in self.auth['network'].split():
-                    f.write('\nhost {dbname} {username} {subnet} md5\n'.format(subnet=subnet, **auth))
+                    f.write('\nhost {dbname} {username} {subnet} md5\n'.format(subnet=subnet, **self.auth))
 
             for subnet in self.replication['network'].split():
                 f.write('\nhost replication {username} {subnet} md5\n'.format(subnet, **self.replication))
