@@ -20,23 +20,37 @@ class Cluster(namedtuple('Cluster', 'leader,last_leader_operation,members')):
 def urljoin(*args):
     return '/'.join(i.strip('/') for i in args)
 
+
+class _Client(requests.Session):
+    def __init__(self, config):
+        super().__init__()
+
+        cert = (config['cert_file'], config['key_file'])
+        if all(cert): # both cert and key given
+            self.cert = cert
+
+        if config['ca_file']:
+            protocol = 'https://'
+            self.verify = config['ca_file']
+        else:
+            protocol = 'http://'
+        self.url = protocol + urljoin(config['host'], 'v2/keys', config['scope'])
+        self.make_url = partial(urljoin, self.url)
+
+    def get(self, path):
+        return super().get(self.make_url(path))
+    def set(self, path, **data):
+        return super().put(self.make_url(path), data=data)
+    def delete(self, path):
+        return super().delete(self.make_url(path))
+
 class Etcd:
 
     def __init__(self, config):
         self.ttl = config['ttl']
         self.member_ttl = config['member_ttl']
         self.postgres_cluster = None
-
-        self.base_client_url = urljoin(config['host'], 'v2/keys', config['scope'])
-        self.client_url = partial(urljoin, self.base_client_url)
-        self.session = requests.Session()
-
-    def get(self, path):
-        return self.session.get(self.client_url(path))
-    def set(self, path, **data):
-        return self.session.put(self.client_url(path), data=data)
-    def delete(self, path):
-        return self.session.delete(self.client_url(path))
+        self.client = _Client(config)
 
     def get_client_path(self, path, max_attempts=1):
         for i in range(max_attempts):
@@ -46,7 +60,7 @@ class Etcd:
                 time.sleep(3)
 
             try:
-                response = self.get(path)
+                response = self.client.get(path)
                 if response.status_code == 200:
                     break
             except Exception as e:
@@ -60,7 +74,7 @@ class Etcd:
 
     def put_client_path(self, path, **data):
         try:
-            response = self.set(path, **data)
+            response = self.client.set(path, **data)
             return response.status_code in [200, 201, 202, 204]
         except:
             logger.exception('PUT %s data=%s', path, data)
@@ -68,7 +82,7 @@ class Etcd:
 
     def delete_client_path(self, path):
         try:
-            response = self.delete(path)
+            response = self.client.delete(path)
             return response.status_code in [200, 202, 204]
         except:
             logger.exception('DELETE %s', path)

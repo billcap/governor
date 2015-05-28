@@ -104,12 +104,19 @@ def main():
     parser.add_argument('--etcd-url', default='http://127.0.0.1:4001', help='url to etcd')
 
     parser.add_argument('--allow-address', default='127.0.0.1/32',
-                        help='whitespace separated list of addresses to allow client access')
+                        help='space separated list of addresses to allow client access')
     parser.add_argument('--allow-replication-address',
-                        help='whitespace separated list of addresses to allow replication')
+                        help='space separated list of addresses to allow replication')
+
+    parser.add_argument('--ca-file', help='path to TLS CA file')
+    parser.add_argument('--cert-file', help='path to TLS cert file (must be specified with --key-file)')
+    parser.add_argument('--key-file', help='path to TLS key file (must be specified with --cert-file)')
 
     args = parser.parse_args()
+
     config = load_config(args.config, args)
+    if bool(config['etcd']['cert_file']) != bool(config['etcd']['key_file']):
+        raise Exception('you cannot specify only one of --cert-file, --key-file')
 
     governor = Governor(config)
     try:

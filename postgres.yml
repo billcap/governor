@@ -3,6 +3,9 @@ etcd:
   #scope: /
   ttl: 30
   #host: http://127.0.0.1:4001
+  #ca_file: ...
+  #cert_file: ...
+  #key_file: ...
 postgresql:
   #name: postgresql0
   #listen: 0.0.0.0:5432

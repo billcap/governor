@@ -11,6 +11,9 @@ def load_config(filename, args):
     etcd.setdefault('host', args.etcd_url)
     etcd.setdefault('scope', '/service')
     etcd.setdefault('member_ttl', etcd['ttl'])
+    etcd.setdefault('ca_file', args.ca_file)
+    etcd.setdefault('cert_file', args.cert_file)
+    etcd.setdefault('key_file', args.key_file)
 
     config.setdefault('postgresql', {})
     psql = config['postgresql']
