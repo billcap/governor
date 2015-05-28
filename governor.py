@@ -109,14 +109,12 @@ def main():
                         help='space separated list of addresses to allow replication')
 
     parser.add_argument('--ca-file', help='path to TLS CA file')
-    parser.add_argument('--cert-file', help='path to TLS cert file (must be specified with --key-file)')
-    parser.add_argument('--key-file', help='path to TLS key file (must be specified with --cert-file)')
+    parser.add_argument('--cert-file', help='path to TLS cert file')
+    parser.add_argument('--key-file', help='path to TLS key file')
 
     args = parser.parse_args()
-
     config = load_config(args.config, args)
-    if bool(config['etcd']['cert_file']) != bool(config['etcd']['key_file']):
-        raise Exception('you cannot specify only one of --cert-file, --key-file')
+    Etcd.validate_config(config['etcd'])
 
     governor = Governor(config)
     try:

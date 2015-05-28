@@ -25,16 +25,11 @@ class _Client(requests.Session):
     def __init__(self, config):
         super().__init__()
 
-        cert = (config['cert_file'], config['key_file'])
-        if all(cert): # both cert and key given
-            self.cert = cert
-
-        if config['ca_file']:
-            protocol = 'https://'
+        if config['host'].startswith('https://'):
+            self.cert = (config['cert_file'], config['key_file'])
             self.verify = config['ca_file']
-        else:
-            protocol = 'http://'
-        self.url = protocol + urljoin(config['host'], 'v2/keys', config['scope'])
+
+        self.url = urljoin(config['host'], 'v2/keys', config['scope'])
         self.make_url = partial(urljoin, self.url)
 
     def get(self, path):
@@ -45,6 +40,17 @@ class _Client(requests.Session):
         return super().delete(self.make_url(path))
 
 class Etcd:
+
+    @staticmethod
+    def validate_cert_config(config):
+        if config['host'].startswith('https://'):
+            # TLS
+            if not config['ca_file']:
+                raise Exception('Expected a CA file')
+            if not config['cert_file']:
+                raise Exception('Expected a cert file')
+            if not config['key_file']:
+                raise Exception('Expected a key file')
 
     def __init__(self, config):
         self.ttl = config['ttl']
