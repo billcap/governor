@@ -27,7 +27,7 @@ class Etcd:
         self.member_ttl = config['member_ttl']
         self.postgres_cluster = None
 
-        self.base_client_url = urljoin(config['host'], 'v2/keys/service', config['scope'])
+        self.base_client_url = urljoin(config['host'], 'v2/keys', config['scope'])
         self.client_url = partial(urljoin, self.base_client_url)
         self.session = requests.Session()
 

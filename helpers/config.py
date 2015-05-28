@@ -9,7 +9,7 @@ def load_config(filename, args):
     config.setdefault('etcd', {})
     etcd = config['etcd']
     etcd.setdefault('host', args.etcd_url)
-    etcd.setdefault('scope', '')
+    etcd.setdefault('scope', '/service')
     etcd.setdefault('member_ttl', etcd['ttl'])
 
     config.setdefault('postgresql', {})
