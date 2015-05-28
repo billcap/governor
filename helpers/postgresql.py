@@ -96,7 +96,7 @@ class Postgresql:
 
     def initialize(self):
         try:
-            subprocess.check_call([self._pg_ctl, 'initdb', '-o', '--encoding=UTF8'])
+            subprocess.check_call(self._pg_ctl + ' initdb -o --encoding=UTF8', shell=True)
         except subprocess.CalledProcessError:
             return False
         self.write_pg_hba()
