@@ -4,6 +4,7 @@ import logging
 import os
 import signal
 import sys
+import socket
 import time
 import yaml
 import subprocess
@@ -97,6 +98,7 @@ class Governor:
 def main():
     parser = argparse.ArgumentParser(description='Postgresql node with self-registration on etcd')
     parser.add_argument('config', help='config file')
+    parser.add_argument('--name', default=socket.gethostname(), help='name of node (defaults to hostname)')
     parser.add_argument('--force-leader', action='store_true', help='forcibly become the leader')
     parser.add_argument('--advertise-url', help='URL to advertise to the rest of the cluster')
     parser.add_argument('--etcd-url', default='http://127.0.0.1:4001', help='url to etcd')
