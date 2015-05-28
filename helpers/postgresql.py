@@ -165,7 +165,7 @@ class Postgresql:
         if self.is_leader():
             return True
 
-        if cluster.last_leader_operation - self.xlog_position() > self.config.get('maximum_lag_on_failover', 0):
+        if cluster.last_leader_operation - self.xlog_position() > self.config['maximum_lag_on_failover']
             return False
 
         for member in cluster.members:
