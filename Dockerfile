@@ -30,6 +30,6 @@ COPY governor.py postgres.yml /usr/src/app/
 COPY helpers /usr/src/app/helpers
 ENV PYTHONPATH=/usr/src/app/
 
-ENTRYPOINT ["/entrypoint.sh", "gosu", "postgres", "python", "governor.py"]
+ENTRYPOINT ["/entrypoint.sh", "python", "governor.py"]
 CMD ["postgres.yml"]
 
