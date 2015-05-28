@@ -116,7 +116,7 @@ class Postgresql:
             'gosu', 'postgres', 'pg_basebackup', '-R',
             '-D', self.data_dir,
             '--host', r['host'],
-            '--port', r['port'],
+            '--port', str(r['port']),
             '-U', r['user'],
         ], env=env)
 
