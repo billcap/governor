@@ -39,7 +39,7 @@ class Postgresql:
         self.replication = config['replication']
         self.recovery_conf = os.path.join(self.data_dir, 'recovery.conf')
         self.pid_path = os.path.join(self.data_dir, 'postmaster.pid')
-        self._pg_ctl = 'gosu postgres pg_ctl -w -D ' + self.data_dir
+        self._pg_ctl = 'pg_ctl -w -D ' + self.data_dir
 
         self.local_address = self.get_local_address()
         connect_address = config.get('connect_address', None) or self.local_address
@@ -113,7 +113,7 @@ class Postgresql:
         env = os.environ.copy()
         env['PGPASSFILE'] = pgpass
         subprocess.check_call([
-            'gosu', 'postgres', 'pg_basebackup', '-R',
+            'pg_basebackup', '-R',
             '-D', self.data_dir,
             '--host', r['host'],
             '--port', str(r['port']),
