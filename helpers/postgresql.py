@@ -51,6 +51,10 @@ class Postgresql:
         self._cursor_holder = None
         self.members = []  # list of already existing replication slots
 
+    def get_local_address(self):
+        # TODO: try to get unix_socket_directory from postmaster.pid
+        return self.listen_addresses.split(',')[0].strip() + ':' + self.port
+
     def connection(self):
         if not self._connection or self._connection.closed != 0:
             params = {
