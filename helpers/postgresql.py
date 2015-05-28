@@ -254,10 +254,11 @@ class Postgresql:
         self.follow_the_leader(leader)
 
     def create_users(self):
-        if self.auth and self.auth['username'] != 'postgres':
+        if self.auth:
+            op = ('ALTER' if self.auth['username'] == 'postgres' else 'CREATE')
             # normal client user
-            self.query('CREATE USER "{}" WITH SUPERUSER ENCRYPTED PASSWORD %s'.format(
-                self.auth['username']), self.auth['password'])
+            self.query('{} USER "{}" WITH SUPERUSER ENCRYPTED PASSWORD %s'.format(
+                op, self.auth['username']), self.auth['password'])
         # replication user
         self.query('CREATE USER "{}" WITH REPLICATION ENCRYPTED PASSWORD %s'.format(
             self.replication['username']), self.replication['password'])

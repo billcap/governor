@@ -34,10 +34,11 @@ def _setup_auth_config(config, args):
     auth = config.get('auth')
     if not auth:
         return {}
-    if 'password' not in auth:
+    if not auth['password'] and not os.environ.get('POSTGRES_PASS')
         logging.warning('no password set, ignoring auth')
         return {}
     auth.setdefault('network', args.allow_address)
-    auth.setdefault('dbname', 'postgres')
-    auth.setdefault('user', 'postgres')
+    auth.setdefault('user', os.environ.get('POSTGRES_USER', 'postgres') )
+    auth.setdefault('password', os.environ.get('POSTGRES_PASS') )
+    auth.setdefault('dbname', auth['user'])
     return auth
