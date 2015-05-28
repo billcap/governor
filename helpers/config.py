@@ -1,4 +1,5 @@
 import yaml
+import logging
 import os
 
 def load_config(filename, args):
@@ -19,8 +20,21 @@ def load_config(filename, args):
     psql.setdefault('data_dir', os.environ['PGDATA'])
     psql.setdefault('maximum_lag_on_failover', 0)
     psql.setdefault('replication', {})
+    psql['auth'] = _setup_auth_config(psql, args)
 
     repl = psql['replication']
-    repl.setdefault('network', args.replication_subnets)
+    repl.setdefault('network', args.replication_address or args.address)
 
     return config
+
+def _setup_auth_config(config, args):
+    auth = config.get('auth')
+    if not auth:
+        return {}
+    if 'password' not in auth:
+        logging.warning('no password set, ignoring auth')
+        return {}
+    auth.setdefault('network', args.address)
+    auth.setdefault('dbname', 'postgres')
+    auth.setdefault('user', 'postgres')
+    return auth

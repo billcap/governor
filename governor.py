@@ -65,7 +65,7 @@ class Governor:
             self.postgresql.initialize()
             self.etcd.take_leader(self.name)
             self.postgresql.start()
-            self.postgresql.create_replication_user()
+            self.postgresql.create_users()
             return True
 
     @retry(5, default='failed to get leader')
@@ -102,11 +102,15 @@ def main():
     parser.add_argument('--force-leader', action='store_true', help='forcibly become the leader')
     parser.add_argument('--advertise-url', help='URL to advertise to the rest of the cluster')
     parser.add_argument('--etcd-url', default='http://127.0.0.1:4001', help='url to etcd')
-    parser.add_argument('--replication-subnets', default='127.0.0.1/32',
-                        help='whitespace separated list of subnets to allow replication')
-    args = parser.parse_args()
 
+    parser.add_argument('--address', default='127.0.0.1/32',
+                        help='whitespace separated list of addresses to allow client access')
+    parser.add_argument('--replication-address', default='127.0.0.1/32',
+                        help='whitespace separated list of addresses to allow replication')
+
+    args = parser.parse_args()
     config = load_config(args.config, args)
+
     governor = Governor(config)
     try:
         governor.initialize(force_leader=args.force_leader)

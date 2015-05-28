@@ -36,6 +36,7 @@ class Postgresql:
         self.name = config['name']
         self.listen_addresses, self.port = config['listen'].split(':')
         self.data_dir = config['data_dir']
+        self.auth = config['auth']
         self.replication = config['replication']
         self.recovery_conf = os.path.join(self.data_dir, 'recovery.conf')
         self.pid_path = os.path.join(self.data_dir, 'postmaster.pid')
@@ -50,13 +51,14 @@ class Postgresql:
         self._cursor_holder = None
         self.members = []  # list of already existing replication slots
 
-    def get_local_address(self):
-        # TODO: try to get unix_socket_directory from postmaster.pid
-        return self.listen_addresses.split(',')[0].strip() + ':' + self.port
-
     def connection(self):
         if not self._connection or self._connection.closed != 0:
-            self._connection = psycopg2.connect('postgres://{}/postgres'.format(self.local_address))
+            params = {
+                'dbname': self.auth.get('dbname', 'postgres'),
+                'user': self.auth.get('username', 'postgres'),
+                'password': self.auth.get('password'),
+            }
+            self._connection = psycopg2.connect(**params)
             self._connection.autocommit = True
         return self._connection
 
@@ -191,10 +193,16 @@ class Postgresql:
         return True
 
     def write_pg_hba(self):
-        with open(os.path.join(self.data_dir, 'pg_hba.conf'), 'a') as f:
-            user = self.replication['username']
+        with open(os.path.join(self.data_dir, 'pg_hba.conf'), 'w') as f:
+            # always allow local socket access
+            f.write('\nlocal all all trust')
+
+            if self.auth:
+                for subnet in self.auth['network'].split():
+                    f.write('\nhost {dbname} {username} {subnet} md5\n'.format(subnet=subnet, **auth))
+
             for subnet in self.replication['network'].split():
-                f.write('\nhost replication {} {} md5\n'.format(user, subnet))
+                f.write('\nhost replication {username} {subnet} md5\n'.format(subnet, **self.replication))
 
     @staticmethod
     def primary_conninfo(leader_url):
@@ -241,7 +249,12 @@ class Postgresql:
     def demote(self, leader):
         self.follow_the_leader(leader)
 
-    def create_replication_user(self):
+    def create_users(self):
+        if self.auth and self.auth['username'] != 'postgres':
+            # normal client user
+            self.query('CREATE USER "{}" WITH SUPERUSER ENCRYPTED PASSWORD %s'.format(
+                self.auth['username']), self.auth['password'])
+        # replication user
         self.query('CREATE USER "{}" WITH REPLICATION ENCRYPTED PASSWORD %s'.format(
             self.replication['username']), self.replication['password'])
 
