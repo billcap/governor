@@ -23,7 +23,7 @@ def load_config(filename, args):
     psql['auth'] = _setup_auth_config(psql, args)
 
     repl = psql['replication']
-    repl.setdefault('network', args.replication_address or args.address)
+    repl.setdefault('network', args.allow_replication_address or args.allow_address)
 
     return config
 
@@ -34,7 +34,7 @@ def _setup_auth_config(config, args):
     if 'password' not in auth:
         logging.warning('no password set, ignoring auth')
         return {}
-    auth.setdefault('network', args.address)
+    auth.setdefault('network', args.allow_address)
     auth.setdefault('dbname', 'postgres')
     auth.setdefault('user', 'postgres')
     return auth

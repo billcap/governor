@@ -103,9 +103,9 @@ def main():
     parser.add_argument('--advertise-url', help='URL to advertise to the rest of the cluster')
     parser.add_argument('--etcd-url', default='http://127.0.0.1:4001', help='url to etcd')
 
-    parser.add_argument('--address', default='127.0.0.1/32',
+    parser.add_argument('--allow-address', default='127.0.0.1/32',
                         help='whitespace separated list of addresses to allow client access')
-    parser.add_argument('--replication-address', default='127.0.0.1/32',
+    parser.add_argument('--allow-replication-address',
                         help='whitespace separated list of addresses to allow replication')
 
     args = parser.parse_args()
