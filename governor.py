@@ -114,7 +114,7 @@ def main():
 
     args = parser.parse_args()
     config = load_config(args.config, args)
-    Etcd.validate_config(config['etcd'])
+    Etcd.validate_cert_config(config['etcd'])
 
     governor = Governor(config)
     try:
