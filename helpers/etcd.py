@@ -25,16 +25,18 @@ class Etcd:
     def __init__(self, config):
         self.ttl = config['ttl']
         self.member_ttl = config['member_ttl']
-        self.base_client_url = urljoin(config['host'], 'v2/keys/service', config['scope'])
-        self.client_url = partial(urljoin, self.base_client_url)
         self.postgres_cluster = None
 
+        self.base_client_url = urljoin(config['host'], 'v2/keys/service', config['scope'])
+        self.client_url = partial(urljoin, self.base_client_url)
+        self.session = requests.Session()
+
     def get(self, path):
-        return requests.get(self.client_url(path))
+        return self.session.get(self.client_url(path))
     def set(self, path, **data):
-        return requests.put(self.client_url(path), data=data)
+        return self.session.put(self.client_url(path), data=data)
     def delete(self, path):
-        return requests.delete(self.client_url(path))
+        return self.session.delete(self.client_url(path))
 
     def get_client_path(self, path, max_attempts=1):
         for i in range(max_attempts):
