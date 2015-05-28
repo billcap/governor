@@ -2,7 +2,7 @@ import yaml
 import socket
 import os
 
-def load_config(filename):
+def load_config(filename, args):
     with open(filename) as f:
         config = yaml.load(f)
 
@@ -14,6 +14,7 @@ def load_config(filename):
     config.setdefault('postgresql', {})
     psql = config['postgresql']
     psql.setdefault('name', socket.gethostname())
+    psql.setdefault('connect_address', args.advertise_url)
     psql.setdefault('data_dir', os.environ['PGDATA'])
 
     return config

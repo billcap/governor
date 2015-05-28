@@ -98,9 +98,10 @@ def main():
     parser = argparse.ArgumentParser(description='Postgresql node with self-registration on etcd')
     parser.add_argument('config', help='config file')
     parser.add_argument('--force-leader', action='store_true', help='forcibly become the leader')
+    parser.add_argument('--advertise-url', help='URL to advertise to the rest of the cluster')
     args = parser.parse_args()
 
-    config = load_config(args.config)
+    config = load_config(args.config, args)
     governor = Governor(config)
     try:
         governor.initialize(force_leader=args.force_leader)
