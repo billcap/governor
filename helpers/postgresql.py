@@ -191,7 +191,7 @@ class Postgresql:
     def write_pg_hba(self):
         with open(os.path.join(self.data_dir, 'pg_hba.conf'), 'a') as f:
             user = self.replication['username']
-            for subnet in self.replication['networks'].split():
+            for subnet in self.replication['network'].split():
                 f.write('\nhost replication {} {} md5\n'.format(user, subnet))
 
     @staticmethod
