@@ -15,6 +15,7 @@ def load_config(filename, args):
     psql = config['postgresql']
     psql.setdefault('name', socket.gethostname())
     psql.setdefault('connect_address', args.advertise_url)
+    psql.setdefault('listen', '0.0.0.0:5432')
     psql.setdefault('data_dir', os.environ['PGDATA'])
 
     return config

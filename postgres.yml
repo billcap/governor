@@ -5,7 +5,7 @@ etcd:
   #host: http://127.0.0.1:4001
 postgresql:
   #name: postgresql0
-  listen: 127.0.0.1:5432
+  #listen: 0.0.0.0:5432
   #connect_address: 127.0.0.1:5432
   #data_dir: /data
   maximum_lag_on_failover: 1048576 # 1 megabyte in bytes
