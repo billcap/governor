@@ -12,7 +12,7 @@ postgresql:
   replication:
     username: replicator
     password: rep-pass
-    network:  127.0.0.1/32
+    #network:  127.0.0.1/32
   #recovery_conf:
     #restore_command: cp /wal_archive/%f %p
   parameters:
