@@ -79,7 +79,7 @@ class Governor:
             self.postgresql.start()
             return True
 
-    def load_postgresql():
+    def load_postgresql(self):
         if self.postgresql.is_running():
             self.postgresql.load_replication_slots()
 
