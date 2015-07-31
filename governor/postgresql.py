@@ -166,8 +166,9 @@ class Postgresql:
         return self.pg_ctl('restart', '-m', 'fast') == 0
 
     def server_options(self):
-        options = "--listen_addresses='{}' --port={} {}".format(
-            shlex.quote(self.listen_addresses), shlex.quote(self.port), self.psql_config)
+        options = "--listen_addresses='{}' --port={} ".format(
+            shlex.quote(self.listen_addresses), shlex.quote(self.port))
+        options += ' '.join(map(shlex.quote, self.psql_config))
         return options
 
     def is_healthy(self):
