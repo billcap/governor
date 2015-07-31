@@ -103,7 +103,7 @@ class Postgresql:
         return not (os.path.exists(self.data_dir) and os.listdir(self.data_dir))
 
     def initialize(self):
-        if self.pg_ctl('initdb', '-o', '--encoding', 'UTF-8') == 0:
+        if subprocess.call(['initdb', '-D', self.data_dir, '--encoding', 'UTF-8']) == 0:
             self.write_pg_hba()
             return True
         return False
