@@ -81,14 +81,10 @@ class Ha:
                 logger.info('Does not have lock')
                 return self.follow_leader()
 
-            try:
-                if self.psql.is_leader():
-                    return 'No action. I am the leader with the lock'
-                self.psql.promote()
-                return 'Promoted self to leader'
-            finally:
-                # create replication slots
-                self.psql.create_replication_slots([m.hostname for m in self.cluster.members])
+            if self.psql.is_leader():
+                return 'No action. I am the leader with the lock'
+            self.psql.promote()
+            return 'Promoted self to leader'
 
         except etcd.EtcdException:
             logger.error('Error communicating with Etcd')
@@ -97,3 +93,12 @@ class Ha:
                 return 'Demoted self because etcd is not accessible and I was a leader'
         except (InterfaceError, OperationalError):
             logger.error('Error communicating with Postgresql.  Will try again')
+
+    def sync_replication_slots(self):try:
+        try:
+            if not self.psql.is_leader():
+                self.psql.drop_replication_slots()
+            elif self.cluster:
+                self.psql.create_replication_slots(self.cluster)
+        except:
+            logging.exception('Exception when changing replication slots')

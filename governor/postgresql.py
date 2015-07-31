@@ -266,7 +266,7 @@ class Postgresql:
         cursor = self.query("SELECT slot_name FROM pg_replication_slots WHERE slot_type='physical'")
         self.members = [r[0] for r in cursor]
 
-    def create_replication_slots(self, members):
+    def sync_replication_slots(self, members):
         # drop unused slots
         for slot in set(self.members) - set(members):
             self.query("""SELECT pg_drop_replication_slot(%s)
@@ -279,6 +279,12 @@ class Postgresql:
                            WHERE NOT EXISTS (SELECT 1 FROM pg_replication_slots
                            WHERE slot_name = %s)""", slot, slot)
         self.members = members
+
+    def create_replication_slots(self, cluster):
+        self.sync_replication_slots([name for name in cluster.members if name != self.name])
+
+    def drop_replication_slots(self):
+        self.sync_replication_slots([])
 
     def last_operation(self):
         return self.xlog_position()

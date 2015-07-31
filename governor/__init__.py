@@ -9,7 +9,7 @@ from governor.ha import Ha
 
 class Governor:
     def __init__(self, config, psql_config):
-        self.nap_time = config.loop_time
+        self.loop_time = config.loop_time
 
         logging.info('waiting on etcd')
         self.etcd = Etcd(config)
@@ -65,7 +65,8 @@ class Governor:
         while True:
             self.keep_alive()
             logging.info(self.ha.run_cycle())
-            time.sleep(self.nap_time)
+            self.ha.sync_replication_slots()
+            time.sleep(self.loop_time)
 
     def cleanup(self):
         self.psql.stop()
