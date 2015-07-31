@@ -40,6 +40,7 @@ class Postgresql:
         self._pg_ctl = ['pg_ctl', '-w', '-D', self.data_dir]
 
         self.members = []  # list of already existing replication slots
+        self.promoted = False
 
         self.connection_string = self.connection_format(
             connect_address=self.config.advertise_url,
@@ -125,7 +126,10 @@ class Postgresql:
         return True
 
     def is_leader(self):
-        return not self.query('SELECT pg_is_in_recovery()').fetchone()[0]
+        is_leader = not self.query('SELECT pg_is_in_recovery()').fetchone()[0]
+        if is_leader:
+            self.promoted = False
+        return is_leader
 
     def is_running(self):
         return self.pg_ctl('status') == 0
@@ -245,7 +249,8 @@ class Postgresql:
             self.restart()
 
     def promote(self):
-        return self.pg_ctl('promote') == 0
+        self.promoted = (self.pg_ctl('promote') == 0)
+        return self.promoted
 
     def create_users(self):
         if self.auth:

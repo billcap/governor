@@ -48,7 +48,7 @@ class Ha:
 
     def become_leader(self):
         if self.acquire_lock():
-            if self.psql.is_leader():
+            if self.psql.is_leader() or self.psql.promoted:
                 return 'Acquired session lock as a leader'
             self.psql.promote()
             return 'Promoted self to leader by acquiring session lock'
