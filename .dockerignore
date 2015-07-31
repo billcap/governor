@@ -1,0 +1,5 @@
+.git
+.pdf
+tests
+tox.ini
+docker-compose.yml

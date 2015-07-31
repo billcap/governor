@@ -14,3 +14,6 @@ ENV PGDATA=/pg.data
 RUN mkdir -p "$PGDATA" && \
     chown postgres:postgres "$PGDATA" && \
     chmod 0700 "$PGDATA"
+
+COPY . /usr/src/app
+ENTRYPOINT ["python3", "governor.py", "--data-dir", "$PGDATA"]
