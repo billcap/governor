@@ -166,9 +166,8 @@ class Postgresql:
         return self.pg_ctl('restart', '-m', 'fast') == 0
 
     def server_options(self):
-        options = "--listen_addresses='{}' --port={}".format(shlex.quote(self.listen_addresses), shlex.quote(self.port))
-        for setting, value in vars(self.psql_config).items():
-            options += " --{}='{}'".format(setting, shlex.quote(value))
+        options = "--listen_addresses='{}' --port={} {}".format(
+            shlex.quote(self.listen_addresses), shlex.quote(self.port), self.psql_config)
         return options
 
     def is_healthy(self):
@@ -209,7 +208,7 @@ class Postgresql:
             # always allow local socket access
             f.write('\nlocal all all trust')
 
-            for subnet in self.allow_address.split():
+            for subnet in self.config.allow_address.split():
                 f.write('\nhost {dbname} {username} {subnet} md5\n'.format(subnet=subnet, dbname=self.config.dbname, username=self.config.user))
 
             for subnet in self.config.repl_allow_address.split():

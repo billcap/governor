@@ -37,7 +37,7 @@ class Client(etcd.Client):
 
     def take_leadership(self, value, force=False, first=False):
         key = os.path.join(self.scope, self.LEADER_KEY)
-        prevValue = (None if force else value)
+        prevValue = (None if (force or first) else value)
         prevExist = (not first)
         return self.write(key, value, prevValue=prevValue, prevExist=prevExist, ttl=self.ttl)
 
