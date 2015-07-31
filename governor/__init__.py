@@ -84,5 +84,5 @@ class Governor:
         self.etcd.delete(self.name)
         try:
             self.etcd.vacate_leadership(self.name)
-        except etcd.EtcdCompareFailed:
+        except (etcd.EtcdCompareFailed, etcd.EtcdKeyNotFound):
             pass
