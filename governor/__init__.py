@@ -11,11 +11,22 @@ class Governor:
     def __init__(self, config, psql_config):
         self.loop_time = config.loop_time
 
-        logging.info('waiting on etcd')
-        self.etcd = Etcd(config)
+        self.connect_to_etcd(config)
+
         self.psql = Postgresql(config, psql_config)
         self.ha = Ha(self.psql, self.etcd)
         self.name = self.psql.name
+
+    def connect_to_etcd(self, config):
+        while True:
+            logging.info('waiting on etcd')
+            try:
+                self.etcd = Etcd(config)
+            except ConnectionRefusedError as e:
+                logger.error('Error communicating with etcd. Will try again')
+            except etcd.EtcdException as e:
+                logger.error('Error communicating with etcd. Will try again')
+            time.sleep(5)
 
     def keep_alive(self):
         self.etcd.write(self.name, self.postgresql.connection_string())

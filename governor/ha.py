@@ -92,7 +92,7 @@ class Ha:
                 self.psql.follow_the_leader(None)
                 return 'Demoted self because etcd is not accessible and I was a leader'
         except (InterfaceError, OperationalError):
-            logger.error('Error communicating with Postgresql.  Will try again')
+            logger.error('Error communicating with Postgresql. Will try again')
 
     def sync_replication_slots(self):
         try:

@@ -78,7 +78,7 @@ if __name__ == '__main__':
     if config.etcd_ttl is None:
         config.etcd_ttl = config.loop_time * 2
     if config.repl_allow_address is None:
-        config.repl_allow_address = config.allow_adress
+        config.repl_allow_address = config.allow_address
 
     gov = Governor(config, psql_config)
     try:

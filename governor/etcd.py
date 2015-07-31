@@ -10,7 +10,7 @@ class Client(etcd.Client):
     url_regex = re.compile('^(?P<protocol>http(s?))://(?P<host>.*?):(?P<port>\d+)$')
 
     def __init__(self, config):
-        match = url_regex.match(config.etcd_url).groupdict()
+        match = self.url_regex.match(config.etcd_url).groupdict()
         super().__init__(
             host=match['host'],
             port=int(match['port']),
