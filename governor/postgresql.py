@@ -11,17 +11,23 @@ logger = logging.getLogger(__name__)
 
 def parseurl(url):
     r = urlparse(url)
-    return {
+    options = {
         'host': r.hostname,
         'port': r.port or 5432,
         'user': r.username,
         'password': r.password,
         'database': r.path[1:],
         'fallback_application_name': 'Governor',
-        'connect_timeout': 5,
     }
+    options.update(Postgresql.CONN_OPTIONS)
+    return options
 
 class Postgresql:
+    CONN_OPTIONS = {
+        'connect_timeout': 3,
+        'options': '-c statement_timeout=2000',
+    }
+
     _conn = None
     _cursor_holder = None
 
@@ -54,9 +60,10 @@ class Postgresql:
     def connection(self):
         if not self._conn or self._conn.closed != 0:
             self._conn = psycopg2.connect(
-                dbname = self.auth.get('dbname', 'postgres'),
-                user = self.auth.get('username', 'postgres'),
-                password = self.auth.get('password'),
+                dbanme=self.config.dbname,
+                user=self.config.user,
+                password=self.config.password,
+                **self.CONN_OPTIONS
             )
             self._conn.autocommit = True
         return self._conn

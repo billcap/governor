@@ -50,7 +50,7 @@ if __name__ == '__main__':
     group.add_argument('--key-file', help='path to TLS key file')
 
     group = parser.add_argument_group('psql')
-    group.add_argument('--database', help='database name')
+    group.add_argument('--dbname', help='database name')
     group.add_argument('--listen-address', metavar='HOST:PORT', default='0.0.0.0:5432',
                        help='addresses for psql to listen on')
     group.add_argument('--data-dir', default=os.environ.get("PGDATA"),
