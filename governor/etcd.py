@@ -16,6 +16,8 @@ class Client(etcd.Client):
             port=int(match['port']),
             protocol=match['protocol'],
             allow_reconnect=True,
+            ca_cert=config.ca_file,
+            cert = (config.cert_file, config.key_file),
         )
         self.ttl = config['etcd_ttl']
         self.scope = config['etcd_prefix']
