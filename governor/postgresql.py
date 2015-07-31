@@ -61,6 +61,7 @@ class Postgresql:
         if not self._conn or self._conn.closed:
             self._conn = psycopg2.connect(
                 dbanme=self.config.dbname,
+                port=self.port,
                 user=self.config.user,
                 password=self.config.password,
                 **self.CONN_OPTIONS
