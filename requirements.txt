@@ -1,2 +1,2 @@
 psycopg2
-python-etcd
+-e git://github.com/jplana/python-etcd@0.4.0#egg=python-etcd
