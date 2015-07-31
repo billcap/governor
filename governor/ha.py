@@ -94,7 +94,7 @@ class Ha:
         except (InterfaceError, OperationalError):
             logger.error('Error communicating with Postgresql.  Will try again')
 
-    def sync_replication_slots(self):try:
+    def sync_replication_slots(self):
         try:
             if not self.psql.is_leader():
                 self.psql.drop_replication_slots()
