@@ -1,12 +1,24 @@
 import etcd
 import os
+import re
 
 class Client(etcd.Client):
     LEADER_KEY = 'leader'
     OPTIME_KEY = 'optime'
     INIT_KEY = 'initialize'
-    scope = '/'
-    ttl = None
+
+    url_regex = re.compile('^(?P<protocol>http(s?))://(?P<host>.*?):(?P<port>\d+)$')
+
+    def __init__(self, config):
+        match = url_regex.match(config.etcd_url).groupdict()
+        super().__init__(
+            host=match['host'],
+            port=int(match['port']),
+            protocol=match['protocol'],
+            allow_reconnect=True,
+        )
+        self.ttl = config['etcd_ttl']
+        self.scope = config['etcd_prefix']
 
     def write_optime(self, value):
         key = os.path.join(self.scope, self.OPTIME_KEY)

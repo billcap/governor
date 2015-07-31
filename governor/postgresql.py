@@ -2,6 +2,7 @@ import logging
 import os
 import psycopg2
 import time
+import shlex
 import subprocess
 
 from urllib.parse import urlparse
@@ -26,30 +27,28 @@ class Postgresql:
 
     connection_format = 'postgres://{username}:{password}@{connect_address}/postgres'.format
 
-    def __init__(self, config):
+    def __init__(self, config, psql_config):
         self.config = config
-        self.name = config['name']
-        self.listen_addresses, self.port = config['listen'].split(':')
-        self.data_dir = config['data_dir']
-        self.auth = config['auth']
-        self.replication = config['replication']
+        self.psql_config = psql_config
+
+        self.name = config.name
+        self.listen_addresses, self.port = config.listen_address.split(':')
+        self.data_dir = config.data_dir
+
         self.recovery_conf = os.path.join(self.data_dir, 'recovery.conf')
         self.pid_path = os.path.join(self.data_dir, 'postmaster.pid')
-
         self._pg_ctl = ['pg_ctl', '-w', '-D', self.data_dir]
-
-        self.local_address = self.get_local_address()
-        connect_address = config.get('connect_address', None) or self.local_address
-        self.connection_string = self.connection_format(connect_address=connect_address, **self.replication)
 
         self.members = []  # list of already existing replication slots
 
+        self.connection_string = self.connection_format(
+            connect_address=self.config.advertise_url,
+            username=self.config.repl_user,
+            password=self.config.repl_password,
+        )
+
     def pg_ctl(self, *args, **kwargs):
         return subprocess.call(self._pg_ctl + args, **kwargs)
-
-    def get_local_address(self):
-        # TODO: try to get unix_socket_directory from postmaster.pid
-        return self.listen_addresses.split(',')[0].strip() + ':' + self.port
 
     def connection(self):
         if not self._conn or self._conn.closed != 0:
@@ -141,7 +140,7 @@ class Postgresql:
             os.remove(self.pid_path)
             logger.info('Removed %s', self.pid_path)
 
-        if self.pg_ctl('start', '-o', self.server_options) == 0:
+        if self.pg_ctl('start', '-o', self.server_options()) == 0:
             self.load_replication_slots()
             return True
         return False
@@ -156,9 +155,9 @@ class Postgresql:
         return self.pg_ctl('restart', '-m', 'fast') == 0
 
     def server_options(self):
-        options = "--listen_addresses='{}' --port={}".format(self.listen_addresses, self.port)
-        for setting, value in self.config['parameters'].items():
-            options += " --{}='{}'".format(setting, value)
+        options = "--listen_addresses='{}' --port={}".format(shlex.quote(self.listen_addresses), shlex.quote(self.port))
+        for setting, value in vars(self.psql_config).items():
+            options += " --{}='{}'".format(setting, shlex.quote(value))
         return options
 
     def is_healthy(self):
@@ -171,7 +170,7 @@ class Postgresql:
         if self.is_leader():
             return True
 
-        if cluster.optime - self.xlog_position() > self.config['maximum_lag_on_failover']:
+        if cluster.optime - self.xlog_position() > self.config.maximum_lag:
             return False
 
         for name, m in cluster.members.items():
@@ -234,8 +233,8 @@ class Postgresql:
         if leader:
             contents.append( "primary_slot_name = '{}'".format(self.name) )
             contents.append( "primary_conninfo = '{}'".format(self.primary_conninfo(leader.value)) )
-            for name, value in self.config.get('recovery_conf', {}).items():
-                contents.append( "{} = '{}'".format(name, value) )
+            #for name, value in self.config.recovery_conf:
+                #contents.append( "{} = '{}'".format(name, value) )
 
         with open(self.recovery_conf, 'w') as f:
             f.write('\n'.join(contents) + '\n')

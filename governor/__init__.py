@@ -8,17 +8,17 @@ from governor.postgresql import Postgresql
 from governor.ha import Ha
 
 class Governor:
-    def __init__(self, config):
-        self.nap_time = config['loop_wait']
+    def __init__(self, config, psql_config):
+        self.nap_time = config.loop_time
 
         logging.info('waiting on etcd')
-        self.etcd = Etcd()
-        self.psql = Postgresql(config['postgresql'])
+        self.etcd = Etcd(config)
+        self.psql = Postgresql(config, psql_config)
         self.ha = Ha(self.psql, self.etcd)
         self.name = self.psql.name
 
     def keep_alive(self):
-        self.etcd.write(self.name, self.postgresql.connection_string)
+        self.etcd.write(self.name, self.postgresql.connection_string())
 
     def initialize(self, force_leader=False):
         self.keep_alive()
