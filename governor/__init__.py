@@ -1,11 +1,11 @@
 import logging
 import time
 
-import etcd
-
 from governor.etcd import Client as Etcd
 from governor.postgresql import Postgresql
 from governor.ha import Ha
+
+import etcd
 
 class Governor:
     def __init__(self, config, psql_config):
@@ -23,9 +23,12 @@ class Governor:
             try:
                 self.etcd = Etcd(config)
             except ConnectionRefusedError as e:
-                logger.error('Error communicating with etcd. Will try again')
+                logging.error('Error communicating with etcd. Will try again')
             except etcd.EtcdException as e:
-                logger.error('Error communicating with etcd. Will try again')
+                if str(e) == 'No more machines in the cluster':
+                    logging.error('Error communicating with etcd. Will try again')
+                else:
+                    raise e
             time.sleep(5)
 
     def keep_alive(self):
