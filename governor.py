@@ -15,8 +15,7 @@ import etcd
 from helpers.etcd import Client as Etcd
 from helpers.postgresql import Postgresql
 from helpers.ha import Ha
-#from helpers.config import load_config
-#from helpers.errors import retry
+
 
 def sigterm_handler(signo, stack_frame):
     sys.exit()

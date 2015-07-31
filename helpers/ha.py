@@ -1,7 +1,6 @@
 import logging
 import etcd
 
-from helpers.errors import EtcdError, HealthiestMemberError
 from psycopg2 import InterfaceError, OperationalError
 
 logger = logging.getLogger(__name__)
@@ -98,5 +97,3 @@ class Ha:
                 return 'Demoted self because etcd is not accessible and I was a leader'
         except (InterfaceError, OperationalError):
             logger.error('Error communicating with Postgresql.  Will try again')
-        except HealthiestMemberError:
-            logger.error('failed to determine healthiest member fromt etcd')

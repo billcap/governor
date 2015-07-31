@@ -5,7 +5,6 @@ import os
 from functools import partial
 
 from collections import namedtuple
-from helpers.errors import CurrentLeaderError, EtcdError
 
 logger = logging.getLogger(__name__)
 
