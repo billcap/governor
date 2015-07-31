@@ -20,7 +20,7 @@ class Client(etcd.Client):
             host=match['host'],
             port=int(match['port']),
             protocol=match['protocol'],
-            allow_reconnect=True,
+            #allow_reconnect=True,
             ca_cert=config.ca_file,
             cert=cert,
         )

@@ -23,10 +23,10 @@ class Governor:
             try:
                 self.etcd = Etcd(config)
             except ConnectionRefusedError as e:
-                logging.error('Error communicating with etcd. Will try again')
+                logging.error('Error communicating with etcd: %s', e)
             except etcd.EtcdException as e:
                 if str(e) == 'No more machines in the cluster':
-                    logging.error('Error communicating with etcd. Will try again')
+                    logging.error('Error communicating with etcd: %s', e)
                 else:
                     raise e
             else:
