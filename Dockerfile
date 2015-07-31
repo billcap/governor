@@ -7,7 +7,7 @@ WORKDIR /usr/src/app
 COPY requirements.txt /usr/src/app/
 
 RUN apk add --update build-base python3-dev libffi-dev openssl-dev postgresql-dev && \
-    pip3 install -r requirements.txt
+    pip3 install -r requirements.txt && \
     rm -rf /var/cache/apk/*
 
 ENV PGDATA=/pg.data
