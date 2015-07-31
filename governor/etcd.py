@@ -57,12 +57,12 @@ class Cluster:
     __slots__ = ('members', 'leader', 'leader_node', 'optime')
 
     def __init__(self, nodes, client):
-        self.members = {os.path.basename(m.key): m for m in self.members}
+        self.members = {os.path.basename(m.key): m for m in nodes.leaves}
         self.optime = self.members.pop(Client.OPTIME_KEY, None)
         self.leader_node = self.members.pop(Client.LEADER_KEY, None)
         self.leader = None
 
-        if not self.leader_key:
+        if not self.leader_node:
             return
 
         self.leader = self.members.get(self.leader_node.value)
