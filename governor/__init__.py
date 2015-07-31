@@ -47,7 +47,7 @@ class Governor:
             except etcd.EtcdAlreadyExist:
                 return False
         self.psql.initialize()
-        self.etcd.take_leadership(self.name)
+        self.etcd.take_leadership(self.name, first=True)
         self.psql.start()
         self.psql.create_users()
         return True
