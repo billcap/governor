@@ -39,7 +39,7 @@ class Postgresql:
         self.pid_path = os.path.join(self.data_dir, 'postmaster.pid')
         self._pg_ctl = ['pg_ctl', '-w', '-D', self.data_dir]
 
-        self.members = []  # list of already existing replication slots
+        self.members = set()    # list of already existing replication slots
         self.promoted = False
 
         self.connection_string = self.connection_format(
@@ -269,17 +269,18 @@ class Postgresql:
 
     def load_replication_slots(self):
         cursor = self.query("SELECT slot_name FROM pg_replication_slots WHERE slot_type='physical'")
-        self.members = [r[0] for r in cursor]
+        self.members = set(r[0] for r in cursor)
 
     def sync_replication_slots(self, members):
+        members = set(name for name in cluster.members if name != self.name)
         # drop unused slots
-        for slot in set(self.members) - set(members):
+        for slot in self.members - members:
             self.query("""SELECT pg_drop_replication_slot(%s)
                            WHERE EXISTS(SELECT 1 FROM pg_replication_slots
                            WHERE slot_name = %s)""", slot, slot)
 
         # create new slots
-        for slot in set(members) - set(self.members):
+        for slot in members - self.members:
             self.query("""SELECT pg_create_physical_replication_slot(%s)
                            WHERE NOT EXISTS (SELECT 1 FROM pg_replication_slots
                            WHERE slot_name = %s)""", slot, slot)
