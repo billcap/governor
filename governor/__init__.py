@@ -22,13 +22,8 @@ class Governor:
             logging.info('waiting on etcd')
             try:
                 self.etcd = Etcd(config)
-            except ConnectionRefusedError as e:
+            except (ConnectionRefusedError, etcd.EtcdConnectionFailed) as e:
                 logging.error('Error communicating with etcd: %s', e)
-            except etcd.EtcdException as e:
-                if str(e) == 'No more machines in the cluster':
-                    logging.error('Error communicating with etcd: %s', e)
-                else:
-                    raise e
             else:
                 return
             time.sleep(5)
@@ -48,11 +43,11 @@ class Governor:
     def init_cluster(self, force_leader=False):
         if not force_leader:
             try:
-                self.etcd.init_cluster(self.INIT_KEY, self.name)
+                self.etcd.init_cluster(self.name)
             except etcd.EtcdAlreadyExist:
                 return False
         self.psql.initialize()
-        self.etcd.take_leadership(self.LEADER_KEY, self.name)
+        self.etcd.take_leadership(self.name)
         self.psql.start()
         self.psql.create_users()
         return True
@@ -88,6 +83,6 @@ class Governor:
         self.psql.stop()
         self.etcd.delete(self.name)
         try:
-            self.etcd.delete(self.LEADER_KEY, self.name, prevValue=self.name)
+            self.etcd.vacate_leadership(self.name)
         except etcd.EtcdCompareFailed:
             pass

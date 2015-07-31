@@ -209,12 +209,11 @@ class Postgresql:
             # always allow local socket access
             f.write('\nlocal all all trust')
 
-            if self.auth:
-                for subnet in self.auth['network'].split():
-                    f.write('\nhost {dbname} {username} {subnet} md5\n'.format(subnet=subnet, **self.auth))
+            for subnet in self.allow_address.split():
+                f.write('\nhost {dbname} {username} {subnet} md5\n'.format(subnet=subnet, dbname=self.config.dbname, username=self.config.user))
 
-            for subnet in self.replication['network'].split():
-                f.write('\nhost replication {username} {subnet} md5\n'.format(subnet=subnet, **self.replication))
+            for subnet in self.config.repl_allow_address.split():
+                f.write('\nhost replication {username} {subnet} md5\n'.format(subnet=subnet, username=self.config.repl_user))
 
     @staticmethod
     def primary_conninfo(leader_url):
@@ -260,14 +259,14 @@ class Postgresql:
         return self.promoted
 
     def create_users(self):
-        if self.auth:
-            op = ('ALTER' if self.auth['username'] == 'postgres' else 'CREATE')
-            # normal client user
-            self.query('{} USER "{}" WITH SUPERUSER ENCRYPTED PASSWORD %s'.format(
-                op, self.auth['username']), self.auth['password'])
+        op = ('ALTER' if self.config.user == 'postgres' else 'CREATE')
+        # normal client user
+        self.query('{} USER "{}" WITH SUPERUSER ENCRYPTED PASSWORD %s'.format(
+            op, self.config.user), self.config.password)
+
         # replication user
         self.query('CREATE USER "{}" WITH REPLICATION ENCRYPTED PASSWORD %s'.format(
-            self.replication['username']), self.replication['password'])
+            self.config.repl_user), self.config.repl_password)
 
     def xlog_position(self):
         return self.query("""SELECT CASE WHEN pg_is_in_recovery()

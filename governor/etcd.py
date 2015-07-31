@@ -41,6 +41,10 @@ class Client(etcd.Client):
         prevExist = (not first)
         return self.write(key, value, prevValue=prevValue, prevExist=prevExist, ttl=self.ttl)
 
+    def vacate_leadership(self, value):
+        key = os.path.join(self.scope, self.LEADER_KEY)
+        return self.delete(key, value, prevValue=value)
+
     def get_leader(self):
         key = os.path.join(self.scope, self.LEADER_KEY)
         return self.read(key)
