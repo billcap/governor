@@ -13,9 +13,8 @@ RUN apk add --update build-base python3-dev libffi-dev openssl-dev postgresql-de
 
 ENV PGDATA=/pg.data
 RUN mkdir -p "$PGDATA" && \
-    chown postgres:postgres "$PGDATA" && \
-    chmod 0700 "$PGDATA"
+    chown -R postgres:postgres "$PGDATA" && \
+    chmod -R 0700 "$PGDATA"
 
 COPY . /usr/src/app
-USER postgres
-ENTRYPOINT ["python3", "governor.py", "--data-dir", "$PGDATA"]
+ENTRYPOINT ["sh", "/usr/src/app/entrypoint.sh"]
