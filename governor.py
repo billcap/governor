@@ -34,11 +34,11 @@ if __name__ == '__main__':
                         help='forcibly become the leader')
     parser.add_argument('--advertise-url',
                         help='URL to advertise to the rest of the cluster')
-    parser.add_argument('--loop-time', default=10, type=int
+    parser.add_argument('--loop-time', default=10, type=int,
                         help='length of time (seconds) for each loop, until members re-register themselves')
 
     group = parser.add_argument_group('etcd')
-    group.add_argument('--etcd-url', metavar='PROTO://HOST:PORT',
+    group.add_argument('--etcd-url', metavar='PROTOCOL://HOST:PORT',
                        default='http://127.0.0.1:4001',
                         help='url to etcd (default: http://127.0.0.1:4001)')
     group.add_argument('--etcd-prefix', default='/governor',
@@ -60,17 +60,17 @@ if __name__ == '__main__':
 
     group = parser.add_argument_group('auth')
     group.add_argument('--user', default=os.environ.get('POSTGRES_USER'),
-                       help='psql username (default $POSTGRES_USER)'
+                       help='psql username (default: $POSTGRES_USER)')
     group.add_argument('--password', default=os.environ.get('POSTGRES_PASS'),
-                       help='psql password (default $POSTGRES_PASS)'
+                       help='psql password (default: $POSTGRES_PASS)')
     group.add_argument('--allow-address', default='127.0.0.1/32',
                        help='space separated list of addresses to allow client access (default: 127.0.0.1/32)')
 
     group = parser.add_argument_group('replication')
     group.add_argument('--repl-user', default='replication',
-                       help='psql username for replication (default: replication)'
+                       help='psql username for replication (default: replication)')
     group.add_argument('--repl-password', default=os.environ.get('REPLICATION_PASS'),
-                       help='psql password (default $REPLICATION_PASS)'
+                       help='psql password (default $REPLICATION_PASS)')
     group.add_argument('--repl-allow-address',
                        help='space separated list of addresses to allow replication (default: same as --allow-address)')
 

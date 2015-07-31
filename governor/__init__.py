@@ -30,16 +30,16 @@ class Governor:
             self.sync_from_leader()
 
     def init_cluster(self, force_leader=False):
-        try:
-            self.etcd.init_cluster(self.INIT_KEY, self.name) or force_leader:
-        except etcd.EtcdAlreadyExist:
-            return False
-        else:
-            self.postgresql.initialize()
-            self.etcd.take_leadership(self.LEADER_KEY, self.name)
-            self.postgresql.start()
-            self.postgresql.create_users()
-            return True
+        if not force_leader:
+            try:
+                self.etcd.init_cluster(self.INIT_KEY, self.name)
+            except etcd.EtcdAlreadyExist:
+                return False
+        self.postgresql.initialize()
+        self.etcd.take_leadership(self.LEADER_KEY, self.name)
+        self.postgresql.start()
+        self.postgresql.create_users()
+        return True
 
     def sync_from_leader(self):
         while True:
