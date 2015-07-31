@@ -5,16 +5,9 @@ import sys
 import time
 import subprocess
 
-is_py3 = sys.hexversion >= 0x03000000
-
-if is_py3:
-    from urllib.parse import urlparse
-else:
-    from urlparse import urlparse
-
+from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
-
 
 def parseurl(url):
     r = urlparse(url)
@@ -28,8 +21,11 @@ def parseurl(url):
         'connect_timeout': 5,
     }
 
-
 class Postgresql:
+    _conn = None
+    _cursor_holder = None
+
+    connection_format = 'postgres://{username}:{password}@{connect_address}/postgres'.format
 
     def __init__(self, config):
         self.config = config
@@ -40,31 +36,31 @@ class Postgresql:
         self.replication = config['replication']
         self.recovery_conf = os.path.join(self.data_dir, 'recovery.conf')
         self.pid_path = os.path.join(self.data_dir, 'postmaster.pid')
-        self._pg_ctl = 'pg_ctl -w -D ' + self.data_dir
+
+        self._pg_ctl = ['pg_ctl', '-w', '-D', self.data_dir]
 
         self.local_address = self.get_local_address()
         connect_address = config.get('connect_address', None) or self.local_address
-        self.connection_string = 'postgres://{username}:{password}@{connect_address}/postgres'.format(
-            connect_address=connect_address, **self.replication)
+        self.connection_string = self.connection_format(connect_address=connect_address, **self.replication)
 
-        self._connection = None
-        self._cursor_holder = None
         self.members = []  # list of already existing replication slots
+
+    def pg_ctl(self, *args, **kwargs):
+        return subprocess.call(self._pg_ctl + args, **kwargs)
 
     def get_local_address(self):
         # TODO: try to get unix_socket_directory from postmaster.pid
         return self.listen_addresses.split(',')[0].strip() + ':' + self.port
 
     def connection(self):
-        if not self._connection or self._connection.closed != 0:
-            params = {
-                'dbname': self.auth.get('dbname', 'postgres'),
-                'user': self.auth.get('username', 'postgres'),
-                'password': self.auth.get('password'),
-            }
-            self._connection = psycopg2.connect(**params)
-            self._connection.autocommit = True
-        return self._connection
+        if not self._conn or self._conn.closed != 0:
+            self._conn = psycopg2.connect(
+                dbname = self.auth.get('dbname', 'postgres'),
+                user = self.auth.get('username', 'postgres'),
+                password = self.auth.get('password'),
+            )
+            self._conn.autocommit = True
+        return self._conn
 
     def _cursor(self):
         if not self._cursor_holder or self._cursor_holder.closed:
@@ -72,9 +68,9 @@ class Postgresql:
         return self._cursor_holder
 
     def disconnect(self):
-        if self._connection:
-            self._connection.close()
-        self._connection = self._cursor_holder = None
+        if self._conn:
+            self._conn.close()
+        self._conn = self._cursor_holder = None
 
     def query(self, sql, *params):
         max_attempts = 3
@@ -88,7 +84,7 @@ class Postgresql:
             except psycopg2.InterfaceError as e:
                 ex = e
             except psycopg2.OperationalError as e:
-                if self._connection and self._connection.closed == 0:
+                if self._conn and self._conn.closed == 0:
                     raise e
                 ex = e
             self.disconnect()
@@ -98,18 +94,16 @@ class Postgresql:
             raise ex
 
     def data_directory_empty(self):
-        return not os.path.exists(self.data_dir) or os.listdir(self.data_dir) == []
+        return not (os.path.exists(self.data_dir) and os.listdir(self.data_dir))
 
     def initialize(self):
-        try:
-            subprocess.check_call(self._pg_ctl + ' initdb -o --encoding=UTF8', shell=True)
-        except subprocess.CalledProcessError:
-            return False
-        self.write_pg_hba()
-        return True
+        if self.pg_ctl('initdb', '-o', '--encoding', 'UTF-8') == 0:
+            self.write_pg_hba()
+            return True
+        return False
 
     def sync_from_leader(self, leader):
-        r = parseurl(leader.address)
+        r = parseurl(leader.value)
 
         pgpass = os.environ['PGPASS']
         with open(pgpass, 'w') as f:
@@ -132,7 +126,7 @@ class Postgresql:
         return not self.query('SELECT pg_is_in_recovery()').fetchone()[0]
 
     def is_running(self):
-        return os.system(self._pg_ctl + ' status > /dev/null') == 0
+        return self.pg_ctl('status') == 0
 
     def start(self):
         if self.is_running():
@@ -144,18 +138,19 @@ class Postgresql:
             os.remove(self.pid_path)
             logger.info('Removed %s', self.pid_path)
 
-        ret = os.system(self._pg_ctl + ' start -o "{}"'.format(self.server_options())) == 0
-        ret and self.load_replication_slots()
-        return ret
+        if self.pg_ctl('start', '-o', self.server_options) == 0:
+            self.load_replication_slots()
+            return True
+        return False
 
     def stop(self):
-        return os.system(self._pg_ctl + ' stop -m fast') != 0
+        return self.pg_ctl('stop', '-m', 'fast') != 0
 
     def reload(self):
-        return os.system(self._pg_ctl + ' reload') == 0
+        return self.pg_ctl('reload') == 0
 
     def restart(self):
-        return os.system(self._pg_ctl + ' restart -m fast') == 0
+        return self.pg_ctl('restart', '-m', 'fast') == 0
 
     def server_options(self):
         options = "--listen_addresses='{}' --port={}".format(self.listen_addresses, self.port)
@@ -173,14 +168,14 @@ class Postgresql:
         if self.is_leader():
             return True
 
-        if cluster.last_leader_operation - self.xlog_position() > self.config['maximum_lag_on_failover']:
+        if cluster.optime - self.xlog_position() > self.config['maximum_lag_on_failover']:
             return False
 
-        for member in cluster.members:
-            if member.hostname == self.name:
+        for name, m in cluster.members.items():
+            if name == self.name:
                 continue
             try:
-                member_conn = psycopg2.connect(**parseurl(member.address))
+                member_conn = psycopg2.connect(**parseurl(m.value))
                 member_conn.autocommit = True
                 member_cursor = member_conn.cursor()
                 member_cursor.execute(
@@ -189,7 +184,7 @@ class Postgresql:
                 row = member_cursor.fetchone()
                 member_cursor.close()
                 member_conn.close()
-                logger.error([self.name, member.hostname, row])
+                logger.error([self.name, name, row])
                 if not row[0] or row[1] < 0:
                     return False
             except psycopg2.Error:
@@ -217,7 +212,7 @@ class Postgresql:
         if not os.path.isfile(self.recovery_conf):
             return False
 
-        pattern = leader and leader.address and self.primary_conninfo(leader.address)
+        pattern = (leader and self.primary_conninfo(leader.value))
 
         with open(self.recovery_conf, 'r') as f:
             for line in f:
@@ -233,9 +228,9 @@ class Postgresql:
             "standby_mode = 'on'",
             "recovery_target_timeline = 'latest'",
         ]
-        if leader and leader.address:
+        if leader:
             contents.append( "primary_slot_name = '{}'".format(self.name) )
-            contents.append( "primary_conninfo = '{}'".format(self.primary_conninfo(leader.address)) )
+            contents.append( "primary_conninfo = '{}'".format(self.primary_conninfo(leader.value)) )
             for name, value in self.config.get('recovery_conf', {}).items():
                 contents.append( "{} = '{}'".format(name, value) )
 
@@ -248,10 +243,7 @@ class Postgresql:
             self.restart()
 
     def promote(self):
-        return os.system(self._pg_ctl + ' promote') == 0
-
-    def demote(self, leader):
-        self.follow_the_leader(leader)
+        return self.pg_ctl('promote') == 0
 
     def create_users(self):
         if self.auth:

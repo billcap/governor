@@ -10,16 +10,16 @@ import yaml
 import subprocess
 import argparse
 
-from helpers.etcd import Etcd
+import etcd
+
+from helpers.etcd import Client as Etcd
 from helpers.postgresql import Postgresql
 from helpers.ha import Ha
-from helpers.config import load_config
-from helpers.errors import retry
-
+#from helpers.config import load_config
+#from helpers.errors import retry
 
 def sigterm_handler(signo, stack_frame):
     sys.exit()
-
 
 # handle SIGCHILD, since we are the equivalent of the INIT process
 def sigchld_handler(signo, stack_frame):
@@ -31,71 +31,80 @@ def sigchld_handler(signo, stack_frame):
     except OSError:
         pass
 
-
 class Governor:
-
     def __init__(self, config):
         self.nap_time = config['loop_wait']
-        self.etcd = Etcd(config['etcd'])
-        self.postgresql = Postgresql(config['postgresql'])
-        self.ha = Ha(self.postgresql, self.etcd)
 
-        self.name = self.postgresql.name
-
-    def touch_member(self):
-        return self.etcd.touch_member(self.name, self.postgresql.connection_string)
-
-    @retry(5)
-    def init_member(self):
-        # wait for etcd to be available
         logging.info('waiting on etcd')
-        return self.touch_member()
+        self.etcd = Etcd()
+        self.psql = Postgresql(config['postgresql'])
+        self.ha = Ha(self.psql, self.etcd)
+        self.name = self.psql.name
+
+    def keep_alive(self):
+        self.etcd.write(self.name, self.postgresql.connection_string)
 
     def initialize(self, force_leader=False):
-        self.init_member()
+        self.keep_alive()
 
         # is data directory empty?
-        if not self.postgresql.data_directory_empty():
-            self.load_postgresql()
+        if not self.psql.data_directory_empty():
+            self.load_psql()
         elif not self.init_cluster(force_leader):
             self.sync_from_leader()
 
     def init_cluster(self, force_leader=False):
-        if self.etcd.race('/initialize', self.name) or force_leader:
+        try:
+            self.etcd.init_cluster(self.INIT_KEY, self.name) or force_leader:
+        except etcd.EtcdAlreadyExist:
+            return False
+        else:
             self.postgresql.initialize()
-            self.etcd.take_leader(self.name)
+            self.etcd.take_leadership(self.LEADER_KEY, self.name)
             self.postgresql.start()
             self.postgresql.create_users()
             return True
 
-    @retry(5, default='failed to get leader')
-    def sync_from_leader(self, max_tries=5):
-        logging.info('resolving leader')
-        leader = self.etcd.current_leader()
-        if leader:
+    def sync_from_leader(self):
+        while True:
+            logging.info('resolving leader')
+            try:
+                cluster = self.etcd.get_cluster()
+            except etcd.EtcdKeyNotFound:
+                continue
+
+            if not cluster.leader:
+                continue
+
             logging.info('syncing with leader')
-            self.postgresql.sync_from_leader(leader)
-            self.postgresql.write_recovery_conf(leader)
-            self.postgresql.start()
+            self.psql.sync_from_leader(cluster.leader)
+            self.psql.write_recovery_conf(cluster.leader)
+            self.psql.start()
             return True
 
-    def load_postgresql(self):
-        if self.postgresql.is_running():
-            self.postgresql.load_replication_slots()
+    def load_psql(self):
+        if self.psql.is_running():
+            self.psql.load_replication_slots()
 
     def run(self):
         while True:
-            self.touch_member()
+            self.keep_alive()
             logging.info(self.ha.run_cycle())
             time.sleep(self.nap_time)
 
     def cleanup(self):
-        self.postgresql.stop()
-        self.etcd.delete_member(self.name)
-        self.etcd.delete_leader(self.name)
+        self.psql.stop()
+        self.etcd.delete(self.name)
+        try:
+            self.etcd.delete(self.LEADER_KEY, self.name, prevValue=self.name)
+        except etcd.EtcdCompareFailed:
+            pass
 
+if __name__ == '__main__':
+    logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=logging.INFO)
+    signal.signal(signal.SIGTERM, sigterm_handler)
+    signal.signal(signal.SIGCHLD, sigchld_handler)
 
-def main():
     parser = argparse.ArgumentParser(description='Postgresql node with self-registration on etcd')
     parser.add_argument('config', help='config file')
     parser.add_argument('--name', default=socket.gethostname(), help='name of node (defaults to hostname)')
@@ -114,21 +123,12 @@ def main():
 
     args = parser.parse_args()
     config = load_config(args.config, args)
-    Etcd.validate_cert_config(config['etcd'])
 
-    governor = Governor(config)
+    gov = Governor(args)
     try:
-        governor.initialize(force_leader=args.force_leader)
-        governor.run()
+        gov.initialize(force_leader=args.force_leader)
+        gov.run()
     except KeyboardInterrupt:
         pass
     finally:
-        governor.cleanup()
-
-
-if __name__ == '__main__':
-    logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=logging.INFO)
-    signal.signal(signal.SIGTERM, sigterm_handler)
-    signal.signal(signal.SIGCHLD, sigchld_handler)
-    main()
-
+        gov.cleanup()
