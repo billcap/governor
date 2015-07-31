@@ -17,4 +17,5 @@ RUN mkdir -p "$PGDATA" && \
     chmod 0700 "$PGDATA"
 
 COPY . /usr/src/app
+USER postgres
 ENTRYPOINT ["python3", "governor.py", "--data-dir", "$PGDATA"]
