@@ -1,7 +1,6 @@
 import logging
 import os
 import psycopg2
-import sys
 import time
 import subprocess
 
@@ -112,15 +111,19 @@ class Postgresql:
 
         env = os.environ.copy()
         env['PGPASSFILE'] = pgpass
-        subprocess.check_call([
-            'pg_basebackup', '-R', '-P',
-            '-D', self.data_dir,
-            '--host', r['host'],
-            '--port', str(r['port']),
-            '-U', r['user'],
-        ], env=env)
-
-        os.chmod(self.data_dir, 0o700)
+        try:
+            subprocess.check_call([
+                'pg_basebackup', '-R', '-P',
+                '-D', self.data_dir,
+                '--host', r['host'],
+                '--port', str(r['port']),
+                '-U', r['user'],
+            ], env=env)
+        except subprocess.CalledProcessError:
+            return False
+        finally:
+            os.chmod(self.data_dir, 0o700)
+        return True
 
     def is_leader(self):
         return not self.query('SELECT pg_is_in_recovery()').fetchone()[0]
