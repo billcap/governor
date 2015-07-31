@@ -34,7 +34,7 @@ class Governor:
             time.sleep(5)
 
     def keep_alive(self):
-        self.etcd.write(self.name, self.postgresql.connection_string())
+        self.etcd.write(self.name, self.psql.connection_string)
 
     def initialize(self, force_leader=False):
         self.keep_alive()
@@ -51,10 +51,10 @@ class Governor:
                 self.etcd.init_cluster(self.INIT_KEY, self.name)
             except etcd.EtcdAlreadyExist:
                 return False
-        self.postgresql.initialize()
+        self.psql.initialize()
         self.etcd.take_leadership(self.LEADER_KEY, self.name)
-        self.postgresql.start()
-        self.postgresql.create_users()
+        self.psql.start()
+        self.psql.create_users()
         return True
 
     def sync_from_leader(self):

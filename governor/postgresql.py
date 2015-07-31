@@ -43,7 +43,7 @@ class Postgresql:
 
         self.recovery_conf = os.path.join(self.data_dir, 'recovery.conf')
         self.pid_path = os.path.join(self.data_dir, 'postmaster.pid')
-        self._pg_ctl = ['pg_ctl', '-w', '-D', self.data_dir]
+        self._pg_ctl = ('pg_ctl', '-w', '-D', self.data_dir)
 
         self.members = set()    # list of already existing replication slots
         self.promoted = False
