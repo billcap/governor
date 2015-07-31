@@ -22,10 +22,10 @@ class Client(etcd.Client):
             protocol=match['protocol'],
             allow_reconnect=True,
             ca_cert=config.ca_file,
-            cert = cert,
+            cert=cert,
         )
-        self.ttl = config['etcd_ttl']
-        self.scope = config['etcd_prefix']
+        self.ttl = config.etcd_ttl
+        self.scope = config.etcd_prefix
 
     def write_optime(self, value):
         key = os.path.join(self.scope, self.OPTIME_KEY)

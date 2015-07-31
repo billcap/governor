@@ -29,6 +29,8 @@ class Governor:
                     logging.error('Error communicating with etcd. Will try again')
                 else:
                     raise e
+            else:
+                return
             time.sleep(5)
 
     def keep_alive(self):
