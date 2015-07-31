@@ -75,6 +75,10 @@ if __name__ == '__main__':
                        help='space separated list of addresses to allow replication (default: same as --allow-address)')
 
     config, psql_config = parser.parse_known_args()
+
+    if bool(config.cert_file) != bool(config.key_file):
+        raise ValueError("Expected both or none of --cert-file and --key-file options")
+
     if config.etcd_ttl is None:
         config.etcd_ttl = config.loop_time * 2
     if config.repl_allow_address is None:

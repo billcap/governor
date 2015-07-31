@@ -11,13 +11,18 @@ class Client(etcd.Client):
 
     def __init__(self, config):
         match = self.url_regex.match(config.etcd_url).groupdict()
+
+        cert = (config.cert_file, config.key_file)
+        if not all(cert):
+            cert = None
+
         super().__init__(
             host=match['host'],
             port=int(match['port']),
             protocol=match['protocol'],
             allow_reconnect=True,
             ca_cert=config.ca_file,
-            cert = (config.cert_file, config.key_file),
+            cert = cert,
         )
         self.ttl = config['etcd_ttl']
         self.scope = config['etcd_prefix']
