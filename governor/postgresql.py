@@ -58,7 +58,7 @@ class Postgresql:
         return subprocess.call(self._pg_ctl + args, **kwargs)
 
     def connection(self):
-        if not self._conn or self._conn.closed != 0:
+        if not self._conn or self._conn.closed:
             self._conn = psycopg2.connect(
                 dbanme=self.config.dbname,
                 user=self.config.user,
