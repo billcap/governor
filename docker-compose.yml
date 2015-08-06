@@ -2,6 +2,7 @@ master:
     build: .
     volumes:
         - '/tmp/master:/pg.data'
+        - './example.initdb.d:/docker-entrypoint-initdb.d'
     ports:
         - '5999:5999'
     links:

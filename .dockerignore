@@ -3,3 +3,4 @@
 tests
 tox.ini
 docker-compose.yml
+example.initdb.d
