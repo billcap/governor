@@ -206,15 +206,21 @@ class Postgresql:
         return True
 
     def write_pg_hba(self):
+        if self.config.password:
+            method = 'md5'
+        else:
+            logger.warning('No password specified')
+            method = 'trust'
+
         with open(os.path.join(self.data_dir, 'pg_hba.conf'), 'w') as f:
             # always allow local socket access
             f.write('\nlocal all all trust')
 
             for subnet in self.config.allow_address.split():
-                f.write('\nhost {dbname} {username} {subnet} md5\n'.format(subnet=subnet, dbname=self.config.dbname, username=self.config.user))
+                f.write('\nhost {dbname} {username} {subnet} {method}\n'.format(subnet=subnet, dbname=self.config.dbname, username=self.config.user, method=method))
 
             for subnet in self.config.repl_allow_address.split():
-                f.write('\nhost replication {username} {subnet} md5\n'.format(subnet=subnet, username=self.config.repl_user))
+                f.write('\nhost replication {username} {subnet} {method}\n'.format(subnet=subnet, username=self.config.repl_user, method=method))
 
     @staticmethod
     def primary_conninfo(leader_url):
@@ -243,7 +249,8 @@ class Postgresql:
         ]
         if leader:
             contents.append( "primary_slot_name = '{}'".format(self.name) )
-            contents.append( "primary_conninfo = '{}'".format(self.primary_conninfo(leader.value)) )
+            contents.append( "primary_conninfo = '{}'".format(
+                self.primary_conninfo(leader.value)) )
             #for name, value in self.config.recovery_conf:
                 #contents.append( "{} = '{}'".format(name, value) )
 
@@ -261,13 +268,16 @@ class Postgresql:
 
     def create_users(self):
         op = ('ALTER' if self.config.user == 'postgres' else 'CREATE')
+        query = '{} USER "{}" WITH {}'.format
         # normal client user
-        self.query('{} USER "{}" WITH SUPERUSER ENCRYPTED PASSWORD %s'.format(
-            op, self.config.user), self.config.password)
-
+        self.create_user(query(op, self.config.user, 'SUPERUSER'), self.config.password)
         # replication user
-        self.query('CREATE USER "{}" WITH REPLICATION ENCRYPTED PASSWORD %s'.format(
-            self.config.repl_user), self.config.repl_password)
+        self.create_user(query('CREATE', self.config.repl_user, 'REPLICATION'), self.config.repl_password)
+
+    def create_user(self, query, password):
+        if password:
+            return self.query(query + ' ENCRYPTED PASSWORD %s', password)
+        return self.query(query)
 
     def xlog_position(self):
         return self.query("""SELECT CASE WHEN pg_is_in_recovery()
@@ -279,7 +289,7 @@ class Postgresql:
         self.members = set(r[0] for r in cursor)
 
     def sync_replication_slots(self, members):
-        members = set(name for name in cluster.members if name != self.name)
+        members = set(name for name in members if name != self.name)
         # drop unused slots
         for slot in self.members - members:
             self.query("""SELECT pg_drop_replication_slot(%s)

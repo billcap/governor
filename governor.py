@@ -59,8 +59,8 @@ if __name__ == '__main__':
                        help='the maximum bytes a follower may lag before it is not eligible become leader')
 
     group = parser.add_argument_group('auth')
-    group.add_argument('--user', default=os.environ.get('POSTGRES_USER'),
-                       help='psql username (default: $POSTGRES_USER)')
+    group.add_argument('--user', default=os.environ.get('POSTGRES_USER', 'postgres'),
+                       help='psql username (default: $POSTGRES_USER or postgres)')
     group.add_argument('--password', default=os.environ.get('POSTGRES_PASS'),
                        help='psql password (default: $POSTGRES_PASS)')
     group.add_argument('--allow-address', default='127.0.0.1/32',

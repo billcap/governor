@@ -47,7 +47,7 @@ class Ha:
             return True
 
     def become_leader(self):
-        if self.acquire_lock():
+        if self.etcd.take_leadership(self.psql.name, first=True):
             if self.psql.is_leader() or self.psql.promoted:
                 return 'Acquired session lock as a leader'
             self.psql.promote()
