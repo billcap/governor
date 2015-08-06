@@ -4,6 +4,7 @@ import psycopg2
 import time
 import shlex
 import subprocess
+import shutil
 
 from urllib.parse import urlparse
 
@@ -232,30 +233,25 @@ class Postgresql:
             return False
 
         pattern = (leader and self.primary_conninfo(leader.value))
-
-        with open(self.recovery_conf, 'r') as f:
-            for line in f:
-                if line.startswith('primary_conninfo'):
-                    if not pattern:
-                        return False
-                    return pattern in line
+        for key, value in RecoveryConf(self.recovery_conf).load_config():
+            if key == 'primary_conninfo':
+                if not pattern:
+                    return False
+                return value[1:-1] == pattern
 
         return not pattern
 
     def write_recovery_conf(self, leader):
         contents = [
-            "standby_mode = 'on'",
-            "recovery_target_timeline = 'latest'",
+            ('standby_mode', 'on'),
+            ('recovery_target_timeline', 'latest'),
         ]
         if leader:
-            contents.append( "primary_slot_name = '{}'".format(self.name) )
-            contents.append( "primary_conninfo = '{}'".format(
-                self.primary_conninfo(leader.value)) )
-            #for name, value in self.config.recovery_conf:
-                #contents.append( "{} = '{}'".format(name, value) )
+            contents.append(('primary_slot_name', self.name))
+            contents.append(('primary_conninfo', self.primary_conninfo(leader.value)))
 
-        with open(self.recovery_conf, 'w') as f:
-            f.write('\n'.join(contents) + '\n')
+        config = RecoveryConf(self.recovery_conf)
+        config.write_config(*contents)
 
     def follow_the_leader(self, leader):
         if not self.check_recovery_conf(leader):
@@ -311,3 +307,32 @@ class Postgresql:
 
     def last_operation(self):
         return self.xlog_position()
+
+class RecoveryConf:
+    __slots__ = ('path',)
+
+    def __init__(self, path):
+        self.path = path
+        backup = self.path + '.backup'
+        if not os.path.exists(backup):
+            if os.path.exists(self.path):
+                os.rename(self.path, backup)
+            else:
+                with open(backup, 'w'): pass
+
+    def reload_backup(self):
+        shutil.copy(self.path + '.backup', self.path)
+
+    def load_config(self):
+        with open(self.path) as file:
+            for line in file:
+                if not line.startswith('#'):
+                    yield line.partition(' = ')
+
+    def write_config(self, *args):
+        self.reload_backup()
+        config = set(i[0] for i in self.load_config())
+        with open(self.path, 'a') as file:
+            for key, value in args:
+                if key not in config:
+                    file.write("\n{} = '{}'".format(key, value))
