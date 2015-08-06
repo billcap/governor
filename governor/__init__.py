@@ -1,5 +1,7 @@
 import logging
 import time
+import os
+import subprocess as sp
 
 from governor.etcd import Client as Etcd
 from governor.postgresql import Postgresql
@@ -8,14 +10,30 @@ from governor.ha import Ha
 import etcd
 
 class Governor:
-    def __init__(self, config, psql_config):
-        self.loop_time = config.loop_time
+    INIT_SCRIPT_DIR = '/docker-entrypoint-initdb.d'
 
+    def __init__(self, config, psql_config):
+        self.psql = Postgresql(config, psql_config)
+        # is data directory empty?
+        self.initialised = self.psql.data_directory_empty()
+
+        self.run_init_scripts()
+
+        self.loop_time = config.loop_time
+        self.name = self.psql.name
         self.connect_to_etcd(config)
 
-        self.psql = Postgresql(config, psql_config)
         self.ha = Ha(self.psql, self.etcd)
-        self.name = self.psql.name
+
+    def run_init_scripts(self):
+        # run all the scripts /docker-entrypoint-initdb.d/*.sh
+        if not os.path.isdir(self.INIT_SCRIPT_DIR):
+            return
+        for l in os.listdir(self.INIT_SCRIPT_DIR):
+            if not l.endswith('.sh'):
+                continue
+            if sp.call(['sh', l]) != 0:
+                logging.warn('Failed to run init script: %s', l)
 
     def connect_to_etcd(self, config):
         while True:
@@ -34,11 +52,11 @@ class Governor:
     def initialize(self, force_leader=False):
         self.keep_alive()
 
-        # is data directory empty?
-        if not self.psql.data_directory_empty():
+        if not self.initialised:
             self.load_psql()
         elif not self.init_cluster(force_leader):
             self.sync_from_leader()
+        self.initialised = True
 
     def init_cluster(self, force_leader=False):
         if not force_leader:
