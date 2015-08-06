@@ -13,17 +13,13 @@ class Governor:
     INIT_SCRIPT_DIR = '/docker-entrypoint-initdb.d'
 
     def __init__(self, config, psql_config):
-        self.psql = Postgresql(config, psql_config)
-        # is data directory empty?
-        self.initialised = self.psql.data_directory_empty()
-
-        self.run_init_scripts()
-
         self.loop_time = config.loop_time
-        self.name = self.psql.name
-        self.connect_to_etcd(config)
 
+        self.connect_to_etcd(config)
+        self.psql = Postgresql(config, psql_config)
         self.ha = Ha(self.psql, self.etcd)
+
+        self.name = self.psql.name
 
     def run_init_scripts(self):
         # run all the scripts /docker-entrypoint-initdb.d/*.sh
@@ -53,11 +49,12 @@ class Governor:
     def initialize(self, force_leader=False):
         self.keep_alive()
 
-        if not self.initialised:
+        # is data directory empty?
+        if not self.psql.data_directory_empty():
             self.load_psql()
         elif not self.init_cluster(force_leader):
             self.sync_from_leader()
-        self.initialised = True
+        self.run_init_scripts()
 
     def init_cluster(self, force_leader=False):
         if not force_leader:

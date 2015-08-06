@@ -56,7 +56,9 @@ class Postgresql:
         )
 
     def pg_ctl(self, *args, **kwargs):
-        return subprocess.call(self._pg_ctl + args, **kwargs)
+        cmd = self._pg_ctl + args
+        logger.debug(cmd)
+        return subprocess.call(cmd, **kwargs)
 
     def connection(self):
         if not self._conn or self._conn.closed:
@@ -329,24 +331,26 @@ class ConfigFile:
                 if not line.startswith('#'):
                     yield from file
 
-    def write_config(self, *lines, reload=True, check_duplicates=True):
+    def write_config(self, *lines, reload=True, check_duplicates=True, truncate=False):
         if reload:
             self.reload_backup()
         if check_duplicates:
             config = set(self.load_config())
         else:
             config = ()
-        with open(self.path, 'a') as file:
+        mode = ('w' if truncate else 'a')
+        with open(self.path, mode) as file:
             for l in lines:
                 if l not in config:
                     file.write('\n' + l)
+            file.write('\n')
 
 class RecoveryConf(ConfigFile):
     def load_config(self):
         for line in super().load_config():
             yield line.partition(' = ')
 
-    def write_config(self, *args, reload=True, check_duplicates=True):
+    def write_config(self, *args, reload=True, check_duplicates=True, **kwargs):
         if reload:
             self.reload_backup()
         if check_duplicates:
@@ -354,4 +358,4 @@ class RecoveryConf(ConfigFile):
         else:
             config = ()
         args = ("{} = '{}'".format(k, v) for k, v in args if k not in config)
-        return super().write_config(*args, reload=False, check_duplicates=False)
+        return super().write_config(*args, reload=False, check_duplicates=False, **kwargs)
