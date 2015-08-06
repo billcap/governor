@@ -8,5 +8,6 @@ wal_keep_segments = '8'
 archive_timeout = '1800s'
 max_replication_slots = '5'
 hot_standby = 'on'
+logging_collector = on
 EOS
 cp $FILE $FILE.backup
