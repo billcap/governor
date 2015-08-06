@@ -32,7 +32,7 @@ if __name__ == '__main__':
                         help='name of node (defaults to hostname)')
     parser.add_argument('--force-leader', action='store_true',
                         help='forcibly become the leader')
-    parser.add_argument('--advertise-url',
+    parser.add_argument('--advertise-url', required=True,
                         help='URL to advertise to the rest of the cluster')
     parser.add_argument('--loop-time', default=10, type=int,
                         help='length of time (seconds) for each loop, until members re-register themselves')
@@ -50,7 +50,7 @@ if __name__ == '__main__':
     group.add_argument('--key-file', help='path to TLS key file')
 
     group = parser.add_argument_group('psql')
-    group.add_argument('--dbname', help='database name')
+    group.add_argument('--dbname', required=True, help='database name')
     group.add_argument('--listen-address', metavar='HOST:PORT', default='0.0.0.0:5432',
                        help='addresses for psql to listen on')
     group.add_argument('--data-dir', default=os.environ.get("PGDATA"),

@@ -6,7 +6,7 @@ master:
         - '5999:5999'
     links:
         - etcd
-    command: python3 governor.py --data-dir "$PGDATA" --listen-address 0.0.0.0:5999 --advertise-url=10.176.160.104:5999 --etcd-url=http://etcd:4001 --allow-address=10.176.160.104/16
+    command: python3 governor.py --dbname postgres --data-dir "$PGDATA" --listen-address 0.0.0.0:5999 --advertise-url=10.176.160.104:5999 --etcd-url=http://etcd:4001 --allow-address=10.176.160.104/16
 
 #slave:
     #build: .
