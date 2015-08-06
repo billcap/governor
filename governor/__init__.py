@@ -29,10 +29,11 @@ class Governor:
         # run all the scripts /docker-entrypoint-initdb.d/*.sh
         if not os.path.isdir(self.INIT_SCRIPT_DIR):
             return
-        for l in os.listdir(self.INIT_SCRIPT_DIR):
-            if not l.endswith('.sh'):
+        for file in os.listdir(self.INIT_SCRIPT_DIR):
+            file = os.path.join(self.INIT_SCRIPT_DIR, file)
+            if not file.endswith('.sh') or not os.path.isfile(file):
                 continue
-            if sp.call(['sh', l]) != 0:
+            if sp.call(['sh', file]) != 0:
                 logging.warn('Failed to run init script: %s', l)
 
     def connect_to_etcd(self, config):

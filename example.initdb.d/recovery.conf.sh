@@ -1,4 +1,4 @@
-cat <<EOS
+cat <<EOS > $PGDATA/recovery.conf.backup
 archive_mode = 'on'
 wal_level = 'hot_standby'
 archive_command = 'mkdir -p ../wal_archive && cp %p ../wal_archive/%f'
@@ -7,4 +7,4 @@ wal_keep_segments = '8'
 archive_timeout = '1800s'
 max_replication_slots = '5'
 hot_standby = 'on'
-EOS > $PGDATA/recovery.conf
+EOS

@@ -215,7 +215,7 @@ class Postgresql:
 
         hba = ['local all all trust']
         for subnet in self.config.allow_address.split():
-            hba.append(' '.join(['host', dbname, self.config.user, subnet, method]))
+            hba.append(' '.join(['host', self.config.dbname, self.config.user, subnet, method]))
 
         for subnet in self.config.repl_allow_address.split():
             hba.append(' '.join(['host', 'replication', self.config.repl_user, subnet, method]))
@@ -325,8 +325,9 @@ class ConfigFile:
 
     def load_config(self):
         with open(self.path) as file:
-            if not line.startswith('#'):
-                yield from file
+            for line in file:
+                if not line.startswith('#'):
+                    yield from file
 
     def write_config(self, *lines, reload=True, check_duplicates=True):
         if reload:
