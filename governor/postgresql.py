@@ -213,15 +213,15 @@ class Postgresql:
             logger.warning('No password specified')
             method = 'trust'
 
-        with open(os.path.join(self.data_dir, 'pg_hba.conf'), 'w') as f:
-            # always allow local socket access
-            f.write('\nlocal all all trust')
+        hba = ['local all all trust']
+        for subnet in self.config.allow_address.split():
+            hba.append(' '.join(['host', dbname, self.config.user, subnet, method]))
 
-            for subnet in self.config.allow_address.split():
-                f.write('\nhost {dbname} {username} {subnet} {method}\n'.format(subnet=subnet, dbname=self.config.dbname, username=self.config.user, method=method))
+        for subnet in self.config.repl_allow_address.split():
+            hba.append(' '.join(['host', 'replication', self.config.repl_user, subnet, method]))
 
-            for subnet in self.config.repl_allow_address.split():
-                f.write('\nhost replication {username} {subnet} {method}\n'.format(subnet=subnet, username=self.config.repl_user, method=method))
+        config = ConfigFile(os.path.join(self.data_dir, 'pg_hba.conf'))
+        config.write_config(*hba)
 
     @staticmethod
     def primary_conninfo(leader_url):
@@ -308,7 +308,7 @@ class Postgresql:
     def last_operation(self):
         return self.xlog_position()
 
-class RecoveryConf:
+class ConfigFile:
     __slots__ = ('path',)
 
     def __init__(self, path):
@@ -325,14 +325,32 @@ class RecoveryConf:
 
     def load_config(self):
         with open(self.path) as file:
-            for line in file:
-                if not line.startswith('#'):
-                    yield line.partition(' = ')
+            if not line.startswith('#'):
+                yield from file
 
-    def write_config(self, *args):
-        self.reload_backup()
-        config = set(i[0] for i in self.load_config())
+    def write_config(self, *lines, reload=True, check_duplicates=True):
+        if reload:
+            self.reload_backup()
+        if check_duplicates:
+            config = set(self.load_config())
+        else:
+            config = ()
         with open(self.path, 'a') as file:
-            for key, value in args:
-                if key not in config:
-                    file.write("\n{} = '{}'".format(key, value))
+            for l in lines:
+                if l not in config:
+                    file.write('\n' + l)
+
+class RecoveryConf(ConfigFile):
+    def load_config(self):
+        for line in super().load_config():
+            yield line.partition(' = ')
+
+    def write_config(self, *args, reload=True, check_duplicates=True):
+        if reload:
+            self.reload_backup()
+        if check_duplicates:
+            config = set(i[0] for i in self.load_config())
+        else:
+            config = ()
+        args = ("{} = '{}'".format(k, v) for k, v in args if k not in config)
+        return super().write_config(*args, reload=False, check_duplicates=False)
