@@ -63,8 +63,8 @@ if __name__ == '__main__':
                        help='psql username (default: $POSTGRES_USER or postgres)')
     group.add_argument('--password', default=os.environ.get('POSTGRES_PASS'),
                        help='psql password (default: $POSTGRES_PASS)')
-    group.add_argument('--allow-address', default='127.0.0.1/32',
-                       help='space separated list of addresses to allow client access (default: 127.0.0.1/32)')
+    group.add_argument('--allow-address', default='0.0.0.0/0',
+                       help='space separated list of addresses to allow client access (default: 0.0.0.0/0)')
 
     group = parser.add_argument_group('replication')
     group.add_argument('--repl-user', default='replication',
