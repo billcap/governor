@@ -170,10 +170,9 @@ class Postgresql:
         return self.pg_ctl('restart', '-m', 'fast') == 0
 
     def server_options(self):
-        options = [
-            '-o', '-c listen-addresses={}'.format(self.listen_addresses),
-            '-o', '-c port={}'.format(self.port),
-            ] + self.psql_config
+        port = shlex.quote(self.port)
+        listen = shlex.quote(self.listen_addresses)
+        options = ['-o', '-p {} -h {}'.format(port, listen)] + self.psql_config
         return options
 
     def is_healthy(self):
