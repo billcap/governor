@@ -1,6 +1,6 @@
 FROM alpine
 
-RUN apk add --update ca-certificates postgresql openssl libffi python3 && \
+RUN apk add --update ca-certificates postgresql openssl libffi python3 sudo && \
     rm -rf /var/cache/apk/*
 
 WORKDIR /usr/src/app

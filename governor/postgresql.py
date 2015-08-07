@@ -57,7 +57,7 @@ class Postgresql:
 
     def pg_ctl(self, *args, **kwargs):
         cmd = self._pg_ctl + args
-        logger.debug(cmd)
+        logger.info(cmd)
         return subprocess.call(cmd, **kwargs)
 
     def connection(self):
@@ -155,7 +155,7 @@ class Postgresql:
             os.remove(self.pid_path)
             logger.info('Removed %s', self.pid_path)
 
-        if self.pg_ctl('start', '-o', self.server_options()) == 0:
+        if self.pg_ctl('start', '-w', *self.server_options()) == 0:
             self.load_replication_slots()
             return True
         return False
@@ -170,9 +170,10 @@ class Postgresql:
         return self.pg_ctl('restart', '-m', 'fast') == 0
 
     def server_options(self):
-        options = "--listen_addresses='{}' --port={} ".format(
-            shlex.quote(self.listen_addresses), shlex.quote(self.port))
-        options += ' '.join(map(shlex.quote, self.psql_config))
+        options = [
+            '-o', '-c listen-addresses={}'.format(self.listen_addresses),
+            '-o', '-c port={}'.format(self.port),
+            ] + self.psql_config
         return options
 
     def is_healthy(self):
@@ -253,7 +254,7 @@ class Postgresql:
             contents.append(('primary_conninfo', self.primary_conninfo(leader.value)))
 
         config = RecoveryConf(self.recovery_conf)
-        config.write_config(*contents)
+        config.write_config(*contents, truncate = not leader)
 
     def follow_the_leader(self, leader):
         if not self.check_recovery_conf(leader):
