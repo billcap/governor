@@ -102,7 +102,7 @@ class Governor:
 
     def cleanup(self):
         self.psql.stop()
-        self.etcd.delete(self.name)
+        self.etcd.delete(os.path.join(self.etcd.scope, self.name))
         try:
             self.etcd.vacate_leadership(self.name)
         except (etcd.EtcdCompareFailed, etcd.EtcdKeyNotFound):
