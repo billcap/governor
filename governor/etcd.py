@@ -27,19 +27,23 @@ class Client(etcd.Client):
         self.ttl = config.etcd_ttl
         self.scope = config.etcd_prefix
 
+    def write_scoped(self, key, value, **kwargs):
+        key = os.path.join(self.scope, key)
+        return self.write(key, value, **kwargs)
+
     def write_optime(self, value):
-        key = os.path.join(self.scope, self.OPTIME_KEY)
-        return self.write(key, value)
+        return self.write_scoped(self.OPTIME_KEY, value)
 
     def init_cluster(self, value):
-        key = os.path.join(self.scope, self.INIT_KEY)
-        return self.write(key, value, prevExist=False)
+        return self.write_scoped(self.INIT_KEY, value, prevExist=False)
 
     def take_leadership(self, value, force=False, first=False):
-        key = os.path.join(self.scope, self.LEADER_KEY)
-        prevValue = (None if (force or first) else value)
-        prevExist = (not first)
-        return self.write(key, value, prevValue=prevValue, prevExist=prevExist, ttl=self.ttl)
+        kwargs = {}
+        if first:
+            kwargs['prevExist'] = False
+        elif not force:
+            kwargs['prevValue'] = value
+        return self.write_scoped(self.LEADER_KEY, value, ttl=self.ttl, **kwargs)
 
     def vacate_leadership(self, value):
         key = os.path.join(self.scope, self.LEADER_KEY)

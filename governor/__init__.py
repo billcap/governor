@@ -45,7 +45,11 @@ class Governor:
             time.sleep(5)
 
     def keep_alive(self):
-        self.etcd.write(self.name, self.psql.connection_string)
+        value = self.psql.connection_string
+        try:
+            self.etcd.write_scoped(self.name, value, ttl=self.etcd.ttl, prevValue=value)
+        except etcd.EtcdKeyNotFound:
+            self.etcd.write_scoped(self.name, value, ttl=self.etcd.ttl, prevExist=False)
 
     def initialize(self, force_leader=False):
         self.keep_alive()
@@ -58,13 +62,13 @@ class Governor:
         self.run_init_scripts()
 
     def init_cluster(self, force_leader=False):
-        if not force_leader:
-            try:
-                self.etcd.init_cluster(self.name)
-            except etcd.EtcdAlreadyExist:
+        try:
+            self.etcd.init_cluster(self.name)
+        except etcd.EtcdAlreadyExist:
+            if not force_leader:
                 return False
         self.psql.initialize()
-        self.etcd.take_leadership(self.name, first=True)
+        self.etcd.take_leadership(self.name, first = not force_leader)
         self.psql.start()
         self.psql.create_users()
         return True
