@@ -197,7 +197,7 @@ class Postgresql:
         if self.is_leader():
             return True
 
-        if cluster.optime - self.xlog_position() > self.config.maximum_lag:
+        if int(cluster.optime.value) - self.xlog_position() > self.config.maximum_lag:
             return False
 
         for name, m in cluster.members.items():
