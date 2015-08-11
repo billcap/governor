@@ -90,6 +90,7 @@ class Governor:
             time.sleep(5)
 
     def load_psql(self):
+        self.psql.start()
         if self.psql.is_running():
             self.psql.load_replication_slots()
 
