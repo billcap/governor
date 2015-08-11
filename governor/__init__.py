@@ -13,6 +13,7 @@ class Governor:
     INIT_SCRIPT_DIR = '/docker-entrypoint-initdb.d'
 
     def __init__(self, config, psql_config):
+        self.advertise_url = config.advertise_url
         self.loop_time = config.loop_time
 
         self.connect_to_etcd(config)
@@ -45,7 +46,7 @@ class Governor:
             time.sleep(5)
 
     def keep_alive(self):
-        value = self.psql.connection_string
+        value = self.advertise_url
         try:
             self.etcd.write_scoped(self.name, value, ttl=self.etcd.ttl, prevValue=value)
         except etcd.EtcdKeyNotFound:

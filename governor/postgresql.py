@@ -11,29 +11,14 @@ from urllib.parse import urlparse
 
 logger = logging.getLogger(__name__)
 
-def parseurl(url):
-    r = urlparse(url)
-    options = {
-        'host': r.hostname,
-        'port': r.port or 5432,
-        'user': r.username,
-        'password': r.password,
-        'database': r.path[1:],
-        'fallback_application_name': 'Governor',
-    }
-    options.update(Postgresql.CONN_OPTIONS)
-    return options
-
 class Postgresql:
     CONN_OPTIONS = {
         'connect_timeout': 3,
         'options': '-c statement_timeout=2000',
-    }
+        }
 
     _conn = None
     _cursor_holder = None
-
-    connection_format = 'postgres://{username}:{password}@{connect_address}/postgres'.format
 
     def __init__(self, config, psql_config):
         self.config = config
@@ -50,11 +35,18 @@ class Postgresql:
         self.members = set()    # list of already existing replication slots
         self.promoted = False
 
-        self.connection_string = self.connection_format(
-            connect_address=self.config.advertise_url,
-            username=self.config.repl_user,
-            password=self.config.repl_password,
-        )
+    def parseurl(self, url):
+        r = urlparse('postgres://' + url)
+        options = {
+            'host': r.hostname,
+            'port': r.port or 5432,
+            'user': self.config.repl_user,
+            'password': self.config.repl_password,
+            'database': self.config.dbname,
+            'fallback_application_name': 'Governor',
+        }
+        options.update(self.CONN_OPTIONS)
+        return options
 
     def pg_ctl(self, *args, **kwargs):
         cmd = self._pg_ctl + args
@@ -114,22 +106,23 @@ class Postgresql:
         return False
 
     def sync_from_leader(self, leader):
-        r = parseurl(leader.value)
-
-        pgpass = os.path.join(os.environ['ROOT'], 'pgpass')
-        with open(pgpass, 'w') as f:
-            os.fchmod(f.fileno(), 0o600)
-            f.write('{host}:{port}:*:{user}:{password}\n'.format(**r))
-
+        r = self.parseurl(leader.value)
         env = os.environ.copy()
-        env['PGPASSFILE'] = pgpass
+
+        if self.config.repl_password is not None:
+            pgpass = os.path.join(os.environ['ROOT'], 'pgpass')
+            with open(pgpass, 'w') as f:
+                os.fchmod(f.fileno(), 0o600)
+                f.write('{host}:{port}:*:{user}:{password}\n'.format(**r))
+            env['PGPASSFILE'] = pgpass
+
         try:
             subprocess.check_call([
                 'pg_basebackup', '-R', '-P',
                 '-D', self.data_dir,
                 '--host', r['host'],
                 '--port', str(r['port']),
-                '-U', r['user'],
+                '-U', self.config.repl_user,
             ], env=env)
         except subprocess.CalledProcessError:
             return False
@@ -204,7 +197,7 @@ class Postgresql:
             if name == self.name:
                 continue
             try:
-                member_conn = psycopg2.connect(**parseurl(m.value))
+                member_conn = psycopg2.connect(**self.parseurl(m.value))
                 member_conn.autocommit = True
                 member_cursor = member_conn.cursor()
                 member_cursor.execute(
@@ -237,9 +230,8 @@ class Postgresql:
         config = ConfigFile(os.path.join(self.data_dir, 'pg_hba.conf'))
         config.write_config(*hba)
 
-    @staticmethod
-    def primary_conninfo(leader_url):
-        r = parseurl(leader_url)
+    def primary_conninfo(self, leader_url):
+        r = self.parseurl(leader_url)
         return 'user={user} password={password} host={host} port={port} sslmode=prefer sslcompression=1'.format(**r)
 
     def check_recovery_conf(self, leader):
