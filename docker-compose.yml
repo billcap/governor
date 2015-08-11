@@ -8,6 +8,7 @@ master:
     net: container:etcd
     command: >
         python3 governor.py
+        --name node1
         --dbname postgres
         --data-dir /pg.data
         --listen-address 0.0.0.0:5999
@@ -33,6 +34,7 @@ slave:
     net: container:etcd
     command: >
         python3 governor.py
+        --name node2
         --dbname postgres
         --data-dir /pg.data
         --listen-address 0.0.0.0:5998
