@@ -109,7 +109,7 @@ class Postgresql:
         r = self.parseurl(leader.value)
         env = os.environ.copy()
 
-        if self.config.repl_password is not None:
+        if r['password'] is not None:
             pgpass = os.path.join(os.environ['ROOT'], 'pgpass')
             with open(pgpass, 'w') as f:
                 os.fchmod(f.fileno(), 0o600)
@@ -118,7 +118,7 @@ class Postgresql:
 
         try:
             subprocess.check_call([
-                'pg_basebackup', '-R', '-P',
+                'pg_basebackup', '-R', '-P', '-w',
                 '-D', self.data_dir,
                 '--host', r['host'],
                 '--port', str(r['port']),
@@ -224,6 +224,12 @@ class Postgresql:
         for subnet in self.config.allow_address.split():
             hba.append(' '.join(['host', self.config.dbname, self.config.user, subnet, method]))
 
+        if self.config.repl_password:
+            method = 'md5'
+        else:
+            logger.warning('No replication password specified')
+            method = 'trust'
+
         for subnet in self.config.repl_allow_address.split():
             hba.append(' '.join(['host', 'replication', self.config.repl_user, subnet, method]))
 
@@ -233,7 +239,7 @@ class Postgresql:
     def primary_conninfo(self, leader_url):
         r = self.parseurl(leader_url)
         values = ['{}={}'.format(k, r[k]) for k in ['user', 'host', 'port']]
-        if 'password' in r:
+        if r['password'] is not None:
             values.append('password={}'.format(r['password']))
         return '{} sslmode=prefer sslcompression=1'.format(' '.join(values))
 
