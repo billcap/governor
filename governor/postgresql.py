@@ -232,7 +232,10 @@ class Postgresql:
 
     def primary_conninfo(self, leader_url):
         r = self.parseurl(leader_url)
-        return 'user={user} password={password} host={host} port={port} sslmode=prefer sslcompression=1'.format(**r)
+        values = ['{}={}'.format(k, r[k]) for k in ['user', 'host', 'port']]
+        if 'password' in r:
+            values.append('password={}'.format(r['password']))
+        return '{} sslmode=prefer sslcompression=1'.format(' '.join(values))
 
     def check_recovery_conf(self, leader):
         if not os.path.isfile(self.recovery_conf):
