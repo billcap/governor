@@ -341,7 +341,7 @@ class ConfigFile:
         with open(self.path) as file:
             for line in file:
                 if not line.startswith('#'):
-                    yield from file
+                    yield line
 
     def write_config(self, *lines, reload=True, check_duplicates=True, truncate=False):
         if reload:
@@ -360,7 +360,8 @@ class ConfigFile:
 class RecoveryConf(ConfigFile):
     def load_config(self):
         for line in super().load_config():
-            yield line.partition(' = ')
+            k, _, v = line.strip().partition(' = ')
+            yield (k, v)
 
     def write_config(self, *args, reload=True, check_duplicates=True, **kwargs):
         if reload:
