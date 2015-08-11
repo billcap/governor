@@ -29,8 +29,9 @@ class Governor:
             file = os.path.join(self.INIT_SCRIPT_DIR, file)
             if not file.endswith('.sh') or not os.path.isfile(file):
                 continue
+            logging.info('Running init script: %s', file)
             if sp.call(['sh', file]) != 0:
-                logging.warn('Failed to run init script: %s', l)
+                logging.warn('Failed to run init script: %s', file)
 
     def connect_to_etcd(self, config):
         while True:
