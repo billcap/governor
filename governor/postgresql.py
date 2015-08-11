@@ -144,7 +144,7 @@ class Postgresql:
         return is_leader
 
     def is_running(self):
-        return self.pg_ctl('status') == 0
+        return self.pg_ctl('status', stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL) == 0
 
     def start_threaded(self):
         logger = logging.getLogger('postgres')
