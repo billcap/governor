@@ -5,6 +5,7 @@ import time
 import shlex
 import subprocess
 import shutil
+import threading
 
 from urllib.parse import urlparse
 
@@ -145,6 +146,20 @@ class Postgresql:
     def is_running(self):
         return self.pg_ctl('status') == 0
 
+    def start_threaded(self):
+        logger = logging.getLogger('postgres')
+        cmd = [
+            'postgres', '-i',
+            '-p', self.port,
+            '-h', self.listen_addresses,
+            ] + self.psql_config
+        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
+        while True:
+            line = proc.stdout.readline()
+            if not line:
+                break
+            logging.info(line)
+
     def start(self):
         if self.is_running():
             self.load_replication_slots()
@@ -155,10 +170,11 @@ class Postgresql:
             os.remove(self.pid_path)
             logger.info('Removed %s', self.pid_path)
 
-        if self.pg_ctl('start', '-w', *self.server_options()) == 0:
-            self.load_replication_slots()
-            return True
-        return False
+        self.disconnect()
+        thread = threading.Thread(target=self.start_threaded)
+        thread.daemon = True
+        thread.start()
+        return True
 
     def stop(self):
         return self.pg_ctl('stop', '-m', 'fast') != 0
@@ -168,12 +184,6 @@ class Postgresql:
 
     def restart(self):
         return self.pg_ctl('restart', '-m', 'fast') == 0
-
-    def server_options(self):
-        port = shlex.quote(self.port)
-        listen = shlex.quote(self.listen_addresses)
-        options = ['-o', '-p {} -h {}'.format(port, listen)] + self.psql_config
-        return options
 
     def is_healthy(self):
         if not self.is_running():
