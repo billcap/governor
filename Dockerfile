@@ -11,7 +11,7 @@ RUN apk add --update build-base python3-dev libffi-dev openssl-dev postgresql-de
     apk del build-base python3-dev libffi-dev openssl-dev postgresql-dev git && \
     rm -rf /var/cache/apk/* /python-etcd
 
-ENV PGDATA=/pg.data
+ENV ROOT=/pg.data PGDATA=/pg.data/db
 RUN mkdir -p "$PGDATA" && \
     chown -R postgres:postgres "$PGDATA" && \
     chmod -R 0700 "$PGDATA"
