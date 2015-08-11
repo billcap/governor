@@ -10,7 +10,7 @@ master:
         python3 governor.py
         --name node1
         --dbname postgres
-        --data-dir /pg.data
+        --data-dir /pg.data/db
         --listen-address 0.0.0.0:5999
         --advertise-url=127.0.0.1:5999
         --etcd-url=http://127.0.0.1:4001
@@ -36,9 +36,9 @@ slave:
         python3 governor.py
         --name node2
         --dbname postgres
-        --data-dir /pg.data
+        --data-dir /pg.data/db
         --listen-address 0.0.0.0:5998
-        --advertise-url=127.0.0.1:5999
+        --advertise-url=127.0.0.1:5998
         --etcd-url=http://127.0.0.1:4001
         -c wal_level=hot_standby
         -c max_wal_senders=5
