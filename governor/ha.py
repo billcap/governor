@@ -58,9 +58,9 @@ class Ha:
             self.refresh_cluster()
 
         if self.psql.is_leader():
-            self.psql.follow_the_leader(self.cluster.leader_node)
+            self.psql.follow_the_leader(self.cluster.leader)
             return 'Demoted self'
-        self.psql.follow_the_leader(self.cluster)
+        self.psql.follow_the_leader(self.cluster.leader)
         return 'Following the leader'
 
     def run_cycle(self):
@@ -92,7 +92,7 @@ class Ha:
                 self.psql.follow_the_leader(None)
                 return 'Demoted self because etcd is not accessible and I was a leader'
         except (InterfaceError, OperationalError):
-            logger.error('Error communicating with Postgresql. Will try again')
+            logger.exception('Error communicating with Postgresql. Will try again')
 
     def sync_replication_slots(self):
         try:
