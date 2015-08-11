@@ -177,12 +177,14 @@ class Postgresql:
         return True
 
     def stop(self):
+        self.disconnect()
         return self.pg_ctl('stop', '-m', 'fast') != 0
 
     def reload(self):
         return self.pg_ctl('reload') == 0
 
     def restart(self):
+        self.disconnect()
         return self.pg_ctl('restart', '-m', 'fast') == 0
 
     def is_healthy(self):
