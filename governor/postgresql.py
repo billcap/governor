@@ -145,6 +145,7 @@ class Postgresql:
             'postgres', '-i',
             '-p', self.port,
             '-h', self.listen_addresses,
+            '-D', self.data_dir,
             ] + self.psql_config
         proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, universal_newlines=True)
         while True:
