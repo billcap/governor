@@ -1,0 +1,27 @@
+db-node:
+    build: .
+    volumes:
+        - './example.initdb.d:/docker-entrypoint-initdb.d'
+    expose:
+        - $DB_PORT
+    command:
+        - sh
+        - -c
+        - >
+            python3 governor.py
+            --name $NODE_NAME
+            --dbname postgres
+            --data-dir /pg.data/db
+            --listen-address 0.0.0.0:$DB_PORT
+            --advertise-url 127.0.0.1:$DB_PORT
+            --etcd-url http://127.0.0.1:4001
+            -c wal_level=hot_standby
+            -c max_wal_senders=5
+            -c wal_keep_segments=8
+            -c archive_timeout=1800s
+            -c max_replication_slots=5
+            -c hot_standby=on
+    #-c archive_mode=on
+    #-c logging_collector=on
+    #-c archive_command='mkdir -p /wal_archive && cp %p /wal_archive/%f'
+

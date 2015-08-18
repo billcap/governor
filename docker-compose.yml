@@ -1,54 +1,25 @@
 master:
-    build: .
-    volumes:
-        - '/tmp/master:/pg.data'
-        - './example.initdb.d:/docker-entrypoint-initdb.d'
-    expose:
-        - 5999
+    extends:
+        file: db-node.yml
+        service: db-node
+    environment:
+        DB_PORT: 5999
+        NODE_NAME: node1
     net: container:etcd
-    command: >
-        python3 governor.py
-        --name node1
-        --dbname postgres
-        --data-dir /pg.data/db
-        --listen-address 0.0.0.0:5999
-        --advertise-url=127.0.0.1:5999
-        --etcd-url=http://127.0.0.1:4001
-        -c wal_level=hot_standby
-        -c max_wal_senders=5
-        -c wal_keep_segments=8
-        -c archive_timeout=1800s
-        -c max_replication_slots=5
-        -c hot_standby=on
-    #-c archive_mode=on
-    #-c logging_collector=on
-    #-c archive_command='mkdir -p /wal_archive && cp %p /wal_archive/%f'
+    volumes:
+        - /tmp/node1:/pg.data
 
 slave:
     image: governor_master
-    volumes:
-        - '/tmp/slave:/pg.data'
-        - './example.initdb.d:/docker-entrypoint-initdb.d'
-    expose:
-        - 5998
+    extends:
+        file: db-node.yml
+        service: db-node
+    environment:
+        DB_PORT: 5998
+        NODE_NAME: node2
     net: container:etcd
-    command: >
-        python3 governor.py
-        --name node2
-        --dbname postgres
-        --data-dir /pg.data/db
-        --listen-address 0.0.0.0:5998
-        --advertise-url=127.0.0.1:5998
-        --etcd-url=http://127.0.0.1:4001
-        -c wal_level=hot_standby
-        -c max_wal_senders=5
-        -c wal_keep_segments=8
-        -c archive_timeout=1800s
-        -c max_replication_slots=5
-        -c hot_standby=on
-    #-c archive_mode=on
-    #-c logging_collector=on
-    #-c archive_command='mkdir -p /wal_archive && cp %p /wal_archive/%f'
+    volumes:
+        - /tmp/node2:/pg.data
 
 etcd:
     image: quay.io/coreos/etcd:v2.0.13
